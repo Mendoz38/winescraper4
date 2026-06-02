@@ -1,0 +1,9 @@
+node_modules
+build
+dist
+coverage
+.next
+*.min.js
+pnpm-lock.yam
+
+vn_back/lib/template

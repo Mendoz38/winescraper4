@@ -1,0 +1,4 @@
+packages:
+  - 'ws_back'
+  - 'ws_front'
+  - 'ws_scrapper'

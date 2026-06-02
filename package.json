@@ -1,0 +1,15 @@
+{
+  "name": "wine-scraper-monorepo",
+  "private": true,
+  "version": "1.0.0",
+  "packageManager": "pnpm@10.14.0",
+  "scripts": {
+    "dev": "concurrently -n back,front,scrapper -c blue,green,magenta \"pnpm --dir ws_back dev\" \"pnpm --dir ws_front dev\" \"pnpm --dir ws_scrapper dev\"",
+    "dev:back": "pnpm --dir ws_back dev",
+    "dev:front": "pnpm --dir ws_front dev",
+    "dev:scrapper": "pnpm --dir ws_scrapper dev"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
