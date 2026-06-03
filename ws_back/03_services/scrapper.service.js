@@ -1,12 +1,13 @@
-const { randomUUID } = require("node:crypto");
-const { query } = require("../00_utils/db");
-const { toScrapperDto } = require("../02_models/scrapper.model");
+const { randomUUID } = require('node:crypto');
+const { query } = require('../00_utils/db');
+const { toScrapperDto } = require('../02_models/scrapper.model');
 
 const baseSelect = `
   SELECT
     id,
     boutique_id,
     thecat,
+    niveau,
     a_scraper,
     hour_cron,
     day_cron,
@@ -36,26 +37,26 @@ function createHttpError(status, message) {
 }
 
 function toNullable(value) {
-  if (value === undefined || value === null || value === "") return null;
+  if (value === undefined || value === null || value === '') return null;
   return value;
 }
 
 function toBoolFlag(value, fallback = 0) {
   if (value === undefined || value === null) return fallback;
-  if (typeof value === "boolean") return value ? 1 : 0;
-  if (typeof value === "number") return value === 1 ? 1 : 0;
-  if (typeof value === "string") {
+  if (typeof value === 'boolean') return value ? 1 : 0;
+  if (typeof value === 'number') return value === 1 ? 1 : 0;
+  if (typeof value === 'string') {
     const normalized = value.trim().toLowerCase();
-    if (normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "oui") return 1;
+    if (normalized === '1' || normalized === 'true' || normalized === 'yes' || normalized === 'oui') return 1;
     return 0;
   }
   return fallback;
 }
 
 function parseJsonInput(value, fallback = null) {
-  if (value === undefined || value === null || value === "") return fallback;
-  if (typeof value === "object") return value;
-  if (typeof value === "string") {
+  if (value === undefined || value === null || value === '') return fallback;
+  if (typeof value === 'object') return value;
+  if (typeof value === 'string') {
     try {
       return JSON.parse(value);
     } catch (_error) {
@@ -69,13 +70,14 @@ function mapBodyToDbPayload(body = {}) {
   const scrapeData = parseJsonInput(body.scrapeData, {}) || {};
   const scrapeBlock = parseJsonInput(scrapeData.data, {}) || {};
   const csv = Array.isArray(scrapeBlock.csv) ? scrapeBlock.csv : [];
-  const itemSelector = typeof csv[0] === "string" ? csv[0] : null;
-  const fields = csv[1] && typeof csv[1] === "object" ? csv[1] : {};
+  const itemSelector = typeof csv[0] === 'string' ? csv[0] : null;
+  const fields = csv[1] && typeof csv[1] === 'object' ? csv[1] : {};
   const urls = parseJsonInput(body.urls, null) || parseJsonInput(scrapeData.url, null) || [];
 
   return {
     boutique_id: toNullable(body.boutique_id),
     thecat: toNullable(body.thecat),
+    niveau: toNullable(body.niveau),
     a_scraper: toBoolFlag(body.a_scraper, 0),
     hour_cron: toNullable(body.hour_cron ?? scrapeData.hour_cron),
     day_cron: toNullable(body.day_cron ?? scrapeData.day_cron),
@@ -101,9 +103,7 @@ async function findOneRaw(id) {
 }
 
 async function listScrappers({ activeOnly = false } = {}) {
-  const sql = activeOnly
-    ? `${baseSelect} WHERE active = 1 ORDER BY id`
-    : `${baseSelect} ORDER BY id`;
+  const sql = activeOnly ? `${baseSelect} WHERE active = 1 ORDER BY id` : `${baseSelect} ORDER BY id`;
   const rows = await query(sql);
   return rows.map(toScrapperDto);
 }
@@ -111,7 +111,7 @@ async function listScrappers({ activeOnly = false } = {}) {
 async function getScrapper(id) {
   const row = await findOneRaw(id);
   if (!row) {
-    throw createHttpError(404, "scrapper not found");
+    throw createHttpError(404, 'scrapper not found');
   }
   return toScrapperDto(row);
 }
@@ -123,15 +123,16 @@ async function createScrapper(body) {
   await query(
     `
     INSERT INTO com_scrapper (
-      id, boutique_id, thecat, a_scraper, hour_cron, day_cron, urls,
+      id, boutique_id, thecat, niveau, a_scraper, hour_cron, day_cron, urls,
       mode, pagination, load_more, item_selector, sel_domaine, sel_cuvee,
       sel_prix, sel_stock, sel_image, sel_link, sel_category, active
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
     [
       id,
       payload.boutique_id,
       payload.thecat,
+      payload.niveau,
       payload.a_scraper,
       payload.hour_cron,
       payload.day_cron,
@@ -153,7 +154,6 @@ async function createScrapper(body) {
 
   return getScrapper(id);
 }
-
 
 async function touchLastRun(id) {
   await query(`UPDATE com_scrapper SET last_run = NOW() WHERE id = ?`, [id]);

@@ -16,6 +16,7 @@ const baseSelect = `
     s.id,
     s.boutique_id,
     s.thecat,
+    s.niveau,
     s.a_scraper,
     s.hour_cron,
     s.day_cron,
@@ -67,6 +68,7 @@ function toRemoteScrapperPayload(scrapper) {
       payant: scrapper.payant,
       retrait: scrapper.retrait,
       thecat: scrapper.thecat,
+      niveau: scrapper.niveau,
       a_scraper: scrapper.a_scraper,
       active: scrapper.active,
       day_cron: scrapper.day_cron,
@@ -82,7 +84,7 @@ function toRemoteScrapperPayload(scrapper) {
 class ScrapperModel {
   // model: retourne la liste des scrappers (avec filtre actifs optionnel)
   static async getAllScrappers({ activeOnly = false } = {}) {
-    const sql = activeOnly ? `${baseSelect} WHERE s.active = 1 ORDER BY s.id` : `${baseSelect} ORDER BY s.id`;
+    const sql = activeOnly ? `${baseSelect} WHERE s.active = 1 ORDER BY s.id` : `${baseSelect} ORDER BY s.niveau, s.id`;
 
     const rows = await db.query(sql);
     return rows.map((row) => toScrapperDto(row));
@@ -100,12 +102,14 @@ class ScrapperModel {
 
   // model: mettre à jour un scrapper
   static async updateScrapper(id, body) {
+    // console.log('zzzzzzzzz', body);
     await db.query(
       `
       UPDATE com_scrapper
       SET
         boutique_id = ?,
         thecat = ?,
+        niveau = ?,
         a_scraper = ?,
         hour_cron = ?,
         day_cron = ?,
@@ -127,6 +131,7 @@ class ScrapperModel {
       [
         body.boutique_id || null,
         body.thecat || null,
+        body.niveau || null,
         body.a_scraper ? 1 : 0,
         body.hour_cron || null,
         body.day_cron || null,

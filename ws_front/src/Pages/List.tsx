@@ -18,6 +18,7 @@ interface Scraper {
   payant: boolean | null;
   retrait: boolean | null;
   thecat: string | null;
+  niveau: number | null;
   a_scraper: boolean;
   active: boolean;
   last_run: string | null;
@@ -100,13 +101,14 @@ export function ListPage() {
       title: 'ID',
       dataIndex: 'id',
       key: 'id',
-      width: 60,
+      width: 120,
       className: 'table-id-col',
       sorter: (a: Scraper, b: Scraper) =>
         String(a.id).localeCompare(String(b.id), undefined, {
           numeric: true,
           sensitivity: 'base',
         }),
+      ...getColumnSearchProps((record: Scraper) => record.id),
       render: (value: string | number) => (
         <span onClick={() => handleEditClick(value)} className="table-id-text">
           {value}

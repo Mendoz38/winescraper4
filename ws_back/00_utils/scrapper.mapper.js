@@ -1,7 +1,7 @@
 // helper: parse un JSON stocké en base (ou retourne fallback)
 function safeParseJson(value, fallback = null) {
   if (value === null || value === undefined) return fallback;
-  if (typeof value === "object") return value;
+  if (typeof value === 'object') return value;
   try {
     return JSON.parse(value);
   } catch (error) {
@@ -50,6 +50,7 @@ function toScrapperDto(row) {
     payant: row.payant === null || row.payant === undefined ? null : normalizeBooleanFlag(row.payant),
     retrait: row.retrait === null || row.retrait === undefined ? null : normalizeBooleanFlag(row.retrait),
     thecat: row.thecat,
+    niveau: row.niveau,
     a_scraper: normalizeBooleanFlag(row.a_scraper),
     active: normalizeBooleanFlag(row.active),
     day_cron: row.day_cron,

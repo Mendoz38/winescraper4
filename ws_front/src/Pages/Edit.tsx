@@ -5,12 +5,13 @@ import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { fetchScrapper, updateScrapper } from '#/api/endpoints/scrappers';
 import type { Scrapper } from '#/api/endpoints/scrappers';
-import SelectorInput from '#/components/SelectorInput';
+import SelectorInput from './components/SelectorInput';
 
 type EditFormValues = {
   id: string;
   boutique_id: number | null;
   thecat: string | null;
+  niveau: number | null;
   a_scraper: boolean;
   active: boolean;
   hour_cron: string | null;
@@ -62,6 +63,7 @@ export function EditPage() {
           id: found.id,
           boutique_id: found.boutique_id,
           thecat: found.thecat,
+          niveau: found.niveau,
           a_scraper: found.a_scraper,
           active: found.active,
           hour_cron: found.hour_cron,
@@ -137,13 +139,16 @@ export function EditPage() {
                 Sauvegarder
               </Button>
 
-              <div className="input-deux-colonnes">
+              <div className="input-trois-colonnes">
                 <Form.Item label="A scraper" name="a_scraper" valuePropName="checked" className="floating-label">
                   <Switch />
                 </Form.Item>
 
                 <Form.Item label="Actif" name="active" valuePropName="checked" className="floating-label">
                   <Switch />
+                </Form.Item>
+                <Form.Item label="Niveau" name="niveau" className="floating-label">
+                  <Input type="number" />
                 </Form.Item>
               </div>
               <div className="input-deux-colonnes">

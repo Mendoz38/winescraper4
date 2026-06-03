@@ -6,6 +6,7 @@ export type Scrapper = {
   payant: boolean | null;
   retrait: boolean | null;
   thecat: string | null;
+  niveau: number | null;
   a_scraper: boolean;
   active: boolean;
   day_cron: string | null;
@@ -54,7 +55,6 @@ export async function fetchScrapper(id: string): Promise<Scrapper> {
 
 // update scrapper
 export async function updateScrapper(id: string, payload: Scrapper): Promise<Scrapper> {
-  // console.log("0007___updateScrapper payload : ", payload);
   const response = await fetch(`${API_BASE}/scrap/${id}`, {
     method: 'PUT',
     headers: {
