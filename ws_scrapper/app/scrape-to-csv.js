@@ -4,97 +4,87 @@ const { scrape } = require('../routes/scraper');
 const { epur } = require('../routes/text-utils');
 
 const DEFAULT_MAX_ATTEMPTS = 3;
-const DEFAULT_TIMEOUT_MS = 180000;
+const DEFAULT_TIMEOUT_MS = 180_000;
 
-// ─── Retry avec backoff ────────────────────────────────────────────────────────
+// ─── Retry avec backoff linéaire ─────────────────────────────────────────────
 
 const withTimeout = (promise, ms) =>
-  Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(new Error(`Scrape timeout after ${ms}ms`)), ms))]);
+  Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(new Error(`Timeout après ${ms}ms`)), ms))]);
 
-const scrapeWithRetry = async (config, maxAttempts = DEFAULT_MAX_ATTEMPTS, timeoutMs = DEFAULT_TIMEOUT_MS) => {
+const scrapeWithRetry = async (config, maxAttempts, timeoutMs) => {
   let lastError;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      console.log('[app2:csv] scrape:attempt', attempt, '/', maxAttempts, 'timeoutMs=', timeoutMs);
+      console.log('[csv] scrape:attempt', attempt, '/', maxAttempts);
       return await withTimeout(scrape(config), timeoutMs);
     } catch (err) {
       lastError = err;
-      console.log('[app2:csv] scrape:attempt-failed', 'attempt=', attempt, 'error=', err && err.message ? err.message : String(err));
+      console.log('[csv] scrape:failed attempt=', attempt, 'error=', err?.message ?? String(err));
       if (attempt < maxAttempts) await new Promise((r) => setTimeout(r, attempt * 1500));
     }
   }
   throw lastError;
 };
 
-// ─── Normalisation ────────────────────────────────────────────────────────────
+// ─── Nettoyage des lignes ─────────────────────────────────────────────────────
 
-const cleanValue = (v) => {
-  if (v === null || v === undefined) return '';
-  if (typeof v !== 'string') return v;
-  return epur(v) || '';
-};
+const cleanRow = (row) =>
+  Object.fromEntries(Object.entries(row).map(([k, v]) => [k, v == null ? '' : typeof v === 'string' ? (epur(v) ?? '') : v]));
 
-const cleanRow = (row) => {
-  const out = {};
-  Object.keys(row).forEach((key) => {
-    out[key] = cleanValue(row[key]);
+// ─── Colonnes attendues ───────────────────────────────────────────────────────
+
+const BASE_FIELDS = ['domaine', 'cuvee', 'prix', 'stock', 'image', 'link'];
+
+/**
+ * Log un avertissement pour chaque colonne entièrement vide.
+ * Toujours sur BASE_FIELDS complet — détecte les sélecteurs cassés y compris cuvee.
+ */
+const warnEmptyFields = (rows, id, fields) => {
+  fields.forEach((field) => {
+    const empty = rows.filter((r) => !String(r[field] ?? '').trim()).length;
+    if (empty === rows.length) console.warn('[csv] ⚠️  colonne vide à 100%:', field, 'id=', id);
   });
-  return out;
 };
 
-// ─── Validation ───────────────────────────────────────────────────────────────
-
-const inferRequiredFields = (scrapeData) => {
-  const csvConfig = scrapeData?.data?.csv;
-  if (!Array.isArray(csvConfig) || typeof csvConfig[1] !== 'object') return [];
-  return Object.keys(csvConfig[1]);
-};
-
-const isRowUseful = (row, fields) => {
-  const keys = fields.length ? fields : Object.keys(row);
-  return keys.some((k) => {
-    const v = row[k];
-    return v !== null && v !== undefined && String(v).trim().length > 0;
-  });
+/**
+ * Retourne les colonnes à écrire dans le CSV.
+ * Exclut cuvee si aucune ligne ne la renseigne (champ intentionnellement vide).
+ */
+const getFields = (rows) => {
+  const hasCuvee = rows.some((r) => String(r.cuvee ?? '').trim().length > 0);
+  return hasCuvee ? BASE_FIELDS : BASE_FIELDS.filter((f) => f !== 'cuvee');
 };
 
 // ─── Déduplication ────────────────────────────────────────────────────────────
 
 const dedupeRows = (rows) => {
   const seen = new Set();
-  const out = [];
   let duplicates = 0;
+  const out = [];
 
-  rows.forEach((row) => {
-    const key =
-      row.link && String(row.link).trim()
-        ? `link§${String(row.link).trim()}`
-        : `combo§${[row.domaine, row.cuvee, row.prix]
-            .map((v) =>
-              String(v ?? '')
-                .trim()
-                .toLowerCase()
-            )
-            .join('|')}`;
+  for (const row of rows) {
+    const key = row.link?.trim()
+      ? `link§${row.link.trim()}`
+      : `combo§${[row.domaine, row.cuvee, row.prix]
+          .map((v) =>
+            String(v ?? '')
+              .trim()
+              .toLowerCase()
+          )
+          .join('|')}`;
 
     if (!seen.has(key)) {
       seen.add(key);
       out.push(row);
-    } else {
-      duplicates++;
-    }
-  });
+    } else duplicates++;
+  }
 
   return { rows: out, duplicates };
 };
 
-// ─── Export CSV (streaming) ───────────────────────────────────────────────────
+// ─── Export CSV ───────────────────────────────────────────────────────────────
 
-const escapeCell = (v) => {
-  const s = v === null || v === undefined ? '' : String(v);
-  const escaped = s.replace(/"/g, '""');
-  return `"${escaped}"`;
-};
+const escapeCell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
 
 const writeCsv = (filePath, rows, fields) =>
   new Promise((resolve, reject) => {
@@ -110,12 +100,12 @@ const writeCsv = (filePath, rows, fields) =>
 
     const cols = fields.length
       ? fields
-      : Array.from(
-          rows.reduce((s, r) => {
+      : [
+          ...rows.reduce((s, r) => {
             Object.keys(r).forEach((k) => s.add(k));
             return s;
-          }, new Set())
-        );
+          }, new Set()),
+        ];
 
     stream.write(cols.map(escapeCell).join(',') + '\n');
     rows.forEach((row) => stream.write(cols.map((c) => escapeCell(row[c])).join(',') + '\n'));
@@ -125,37 +115,34 @@ const writeCsv = (filePath, rows, fields) =>
 // ─── Pipeline principal ───────────────────────────────────────────────────────
 
 /**
+ * Scrape, nettoie, déduplique et écrit un CSV.
+ *
  * @param {{ id: string, scrapeData: object, outputDir: string }}
  * @returns {Promise<{ outputFile: string, summary: object }>}
  */
 const executeScrapeToCsv = async ({ id, scrapeData, outputDir }) => {
   const t0 = Date.now();
-
   const maxAttempts = Number(scrapeData.max_attempts || DEFAULT_MAX_ATTEMPTS);
   const timeoutMs = Number(scrapeData.timeout_ms || DEFAULT_TIMEOUT_MS);
 
   const rawRows = await scrapeWithRetry(scrapeData, maxAttempts, timeoutMs);
-  const requiredFields = inferRequiredFields(scrapeData);
-
   const cleanedRows = rawRows.map(cleanRow);
-  const validRows = cleanedRows.filter((row) => isRowUseful(row, requiredFields));
-  const { rows, duplicates } = dedupeRows(validRows);
-  const invalidRows = cleanedRows.length - validRows.length;
+
+  const { rows, duplicates } = dedupeRows(cleanedRows);
+  const fields = getFields(rows); // cuvee retiré si intentionnellement vide
+
+  warnEmptyFields(rows, id, fields); // warn uniquement sur les champs retenus
 
   const outputFile = path.join(outputDir, `${id}.csv`);
-  await writeCsv(outputFile, rows, requiredFields);
-  console.log('[app2:csv] csv:written', 'id=', id, 'outputFile=', outputFile, 'Total=', rows.length);
+  await writeCsv(outputFile, rows, fields);
+  console.log('[csv] ✅ Rempli id=', id, '📈 Total de lignes :', rows.length);
 
   return {
     outputFile,
     summary: {
       rawRows: rawRows.length,
-      validRows: validRows.length,
       dedupedRows: rows.length,
-      invalidRows,
       duplicates,
-      maxAttempts,
-      timeoutMs,
       durationMs: Date.now() - t0,
     },
   };

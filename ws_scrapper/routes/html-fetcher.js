@@ -1,13 +1,10 @@
 const axios = require('axios');
 const puppeteer = require('puppeteer-core');
-const path = require('path');
 
 let runtimeConfig = {};
 try {
-  runtimeConfig = require(path.join(__dirname, '..', '.env'));
-} catch (error) {
-  runtimeConfig = {};
-}
+  runtimeConfig = require('../.env');
+} catch {}
 
 const AXIOS_HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
@@ -18,42 +15,34 @@ const AXIOS_HEADERS = {
 
 const BROWSER_EXEC = process.env.BROWSER_EXEC || runtimeConfig.BROWSER_EXEC;
 
-const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// ─── Easy (axios) ─────────────────────────────────────────────────────────────
+// ─── Fetch simple (axios) ────────────────────────────────────────────────────
 
 const fetchEasy = async (url) => {
-  console.log('[routes2:fetcher] easy:request', 'url=', url);
-  const response = await axios.get(url, {
+  console.log('[fetcher] easy:request url=', url);
+  const { status, data } = await axios.get(url, {
     responseType: 'text',
     headers: AXIOS_HEADERS,
     timeout: 30000,
     validateStatus: () => true,
   });
-  if (response.status !== 200) throw new Error(`HTTP ${response.status} on ${url}`);
-  console.log('[routes2:fetcher] easy:response', 'url=', url, 'status=', response.status, 'bytes=', String(response.data || '').length);
-  return response.data;
+  if (status !== 200) throw new Error(`HTTP ${status} on ${url}`);
+  return data;
 };
 
-// ─── Lazy (puppeteer) ─────────────────────────────────────────────────────────
+// ─── Fetch JS-rendu (puppeteer) ──────────────────────────────────────────────
 
 let _browser = null;
 
 const getBrowser = async () => {
   if (!_browser) {
-    const launchOptions = {
+    _browser = await puppeteer.launch({
       headless: true,
       defaultViewport: null,
       args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    };
-
-    if (BROWSER_EXEC) launchOptions.executablePath = BROWSER_EXEC;
-
-    _browser = await puppeteer.launch({
-      ...launchOptions,
+      ...(BROWSER_EXEC && { executablePath: BROWSER_EXEC }),
     });
-    // console.log('[routes2:fetcher] lazy:browser-started', 'executablePath=', launchOptions.executablePath || 'default');
-
     _browser.on('disconnected', () => {
       _browser = null;
     });
@@ -61,15 +50,15 @@ const getBrowser = async () => {
   return _browser;
 };
 
+/** Défile toute la page pour déclencher le lazy-loading. */
 const scrollFull = (page) =>
   page.evaluate(
     () =>
       new Promise((resolve) => {
         let scrolled = 0;
-        const step = 450;
         const timer = setInterval(() => {
-          window.scrollBy(0, step);
-          scrolled += step;
+          window.scrollBy(0, 450);
+          scrolled += 450;
           if (scrolled >= document.body.scrollHeight) {
             clearInterval(timer);
             resolve();
@@ -78,24 +67,24 @@ const scrollFull = (page) =>
       })
   );
 
+/** Clique répétitivement sur un bouton "voir plus" jusqu'à sa disparition. */
 const clickLoadMoreUntilGone = async (page, selector) => {
   if (!selector) return;
-  let clicks = 0;
   for (let i = 0; i < 200; i++) {
     try {
+      console.log('[fetcher] lazy:clic load more : ', i + 1);
       await page.$eval(selector, (el) => {
         el.scrollIntoView();
         el.click();
       });
       await wait(500);
-      clicks += 1;
     } catch {
       break;
     }
   }
-  //   console.log('[routes2:fetcher] lazy:load-more', 'selector=', selector, 'clicks=', clicks);
 };
 
+/** Force src sur les images dont currentSrc est déjà résolu. */
 const materializeImages = (page) =>
   page.evaluate(() => {
     document.querySelectorAll('img').forEach((img) => {
@@ -104,7 +93,7 @@ const materializeImages = (page) =>
   });
 
 const fetchLazy = async (url, { loadMore } = {}) => {
-  //   console.log('[routes2:fetcher] lazy:request', 'url=', url, 'loadMore=', loadMore || 'none');
+  console.log('[fetcher] lazy:request url=', url);
   const browser = await getBrowser();
   const page = await browser.newPage();
   try {
@@ -117,35 +106,31 @@ const fetchLazy = async (url, { loadMore } = {}) => {
     await clickLoadMoreUntilGone(page, loadMore);
     await materializeImages(page);
     const html = await page.content();
-    // console.log('[routes2:fetcher] lazy:response', 'url=', url, 'bytes=', html.length);
     return html;
   } finally {
     await page.close();
   }
 };
 
-// ─── Interface publique ────────────────────────────────────────────────────────
+// ─── Interface publique ──────────────────────────────────────────────────────
 
 /**
  * Récupère le HTML d'une URL.
  * @param {string} url
  * @param {{ lazy?: boolean, loadMore?: string }} options
- * @returns {Promise<string>}
  */
 const fetchHtml = (url, { lazy = false, loadMore } = {}) => (lazy ? fetchLazy(url, { loadMore }) : fetchEasy(url));
 
 const closeBrowser = async () => {
   if (_browser) {
-    const current = _browser;
+    const b = _browser;
     _browser = null;
-    await current.close();
+    await b.close();
   }
 };
 
 process.on('exit', () => {
-  if (_browser) {
-    _browser.close().catch(() => {});
-  }
+  _browser?.close().catch(() => {});
 });
 
 module.exports = { fetchHtml, closeBrowser };
