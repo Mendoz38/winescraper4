@@ -92,7 +92,7 @@ function mapBodyToDbPayload(body = {}) {
     sel_stock: toNullable(body.sel_stock ?? fields.stock),
     sel_image: JSON.stringify(parseJsonInput(body.sel_image, null) ?? parseJsonInput(fields.image, null)),
     sel_link: JSON.stringify(parseJsonInput(body.sel_link, null) ?? parseJsonInput(fields.link, null) ?? parseJsonInput(fields.url, null)),
-    sel_category: JSON.stringify(parseJsonInput(body.sel_category, null) ?? parseJsonInput(scrapeBlock.category, null)),
+    sel_category: toNullable(body.sel_category ?? fields.category),
     active: toBoolFlag(body.active, 1),
   };
 }

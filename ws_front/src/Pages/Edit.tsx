@@ -27,7 +27,7 @@ type EditFormValues = {
   urls_text: string;
   sel_image_json: string;
   sel_link_text: string;
-  sel_category_text: string;
+  sel_category: string;
 };
 
 export function EditPage() {
@@ -79,7 +79,7 @@ export function EditPage() {
           urls_text: JSON.stringify(found.scrapeData?.url ?? [], null, 2),
           sel_image_json: JSON.stringify(csvFields.image ?? null, null, 2),
           sel_link_text: JSON.stringify(csvFields.link ?? csvFields.url ?? null, null, 2),
-          sel_category_text: JSON.stringify(found.scrapeData?.data.category ?? null, null, 2),
+          sel_category: (found.scrapeData?.data.category ?? null) as string | null,
         });
       } catch (error) {
         message.error('Erreur lors du chargement du scraper');
@@ -103,7 +103,6 @@ export function EditPage() {
         urls: parseJson<unknown[]>(values.urls_text, []),
         sel_image: parseJson<unknown>(values.sel_image_json, null),
         sel_link: parseJson<unknown>(values.sel_link_text, null),
-        sel_category: parseJson<unknown>(values.sel_category_text, null),
       };
 
       await updateScrapper(scraper.id, {
@@ -217,14 +216,15 @@ export function EditPage() {
                 <SelectorInput />
               </Form.Item>
 
-              <Form.Item label="Sel category (JSON)" name="sel_category_text" className="floating-label">
-                <SelectorInput />
-              </Form.Item>
+              <div className="input-deux-colonnes">
+                <Form.Item label="Sel stock" name="sel_stock" className="floating-label">
+                  <Input />
+                </Form.Item>
 
-              <Form.Item label="Sel stock" name="sel_stock" className="floating-label">
-                <Input />
-              </Form.Item>
-
+                <Form.Item label="Domaine en dur" name="sel_category" className="floating-label">
+                  <Input />
+                </Form.Item>
+              </div>
               <Space>
                 <Button type="primary" htmlType="submit" loading={loading}>
                   Sauvegarder

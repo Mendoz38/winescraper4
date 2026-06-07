@@ -42,7 +42,7 @@ const BASE_FIELDS = ['domaine', 'cuvee', 'prix', 'stock', 'image', 'link'];
 const warnEmptyFields = (rows, id, fields) => {
   fields.forEach((field) => {
     const empty = rows.filter((r) => !String(r[field] ?? '').trim()).length;
-    if (empty === rows.length) console.warn('[csv] ⚠️  colonne vide à 100%:', field, 'id=', id);
+    if (empty === rows.length) console.warn('[csv] ⚠️  ', field, ' vide à 100% | id=', id);
   });
 };
 
@@ -120,7 +120,7 @@ const writeCsv = (filePath, rows, fields) =>
  * @param {{ id: string, scrapeData: object, outputDir: string }}
  * @returns {Promise<{ outputFile: string, summary: object }>}
  */
-const executeScrapeToCsv = async ({ id, scrapeData, outputDir }) => {
+const executeScrapeToCsv = async ({ id, scrapeData, outputDir, meta = {} }) => {
   const t0 = Date.now();
   const maxAttempts = Number(scrapeData.max_attempts || DEFAULT_MAX_ATTEMPTS);
   const timeoutMs = Number(scrapeData.timeout_ms || DEFAULT_TIMEOUT_MS);
@@ -129,13 +129,13 @@ const executeScrapeToCsv = async ({ id, scrapeData, outputDir }) => {
   const cleanedRows = rawRows.map(cleanRow);
 
   const { rows, duplicates } = dedupeRows(cleanedRows);
-  const fields = getFields(rows); // cuvee retiré si intentionnellement vide
+  const fields = getFields(rows);
 
-  warnEmptyFields(rows, id, fields); // warn uniquement sur les champs retenus
+  warnEmptyFields(rows, id, fields);
 
   const outputFile = path.join(outputDir, `${id}.csv`);
   await writeCsv(outputFile, rows, fields);
-  console.log('[csv] ✅ Rempli id=', id, '📈 Total de lignes :', rows.length);
+  console.log('[csv] ✅', meta.nom_boutique || id, '📈 Total de lignes :', rows.length);
 
   return {
     outputFile,

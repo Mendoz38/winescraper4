@@ -35,7 +35,7 @@ module.exports = (app) => {
     try {
       const { id, scrapeData, meta } = parseScrapePayload(req.body);
       console.log('[routes] run:start id=', id);
-      const result = await executeScrapeToCsv({ id, scrapeData, outputDir: csvOutputDir });
+      const result = await executeScrapeToCsv({ id, scrapeData, outputDir: csvOutputDir, meta });
       res.json({ status: 'success', data: meta, summary: result.summary });
     } catch (err) {
       console.error('[routes] run:error', err);

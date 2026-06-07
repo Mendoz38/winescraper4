@@ -44,7 +44,7 @@ CREATE TABLE `com_scrapper` (
 
     -- Sélecteur catégorie (utilisé principalement pour les vignerons)
     -- Peut être une string CSS simple ou un objet {"selector":"...", "scrape":["attr","alt"]}
-    `sel_category`    JSON            NULL,
+    `sel_category`    VARCHAR(255)    NULL,  
 
     -- --------------------------------------------------------
     -- Suivi d'exécution
@@ -98,7 +98,7 @@ CREATE TABLE `com_scrapper` (
 -- scrapeData.data.csv[1].stock    → sel_stock
 -- scrapeData.data.csv[1].image    → sel_image (JSON)
 -- scrapeData.data.csv[1].link     → sel_link  (JSON) (ou "url")
--- scrapeData.data.category        → sel_category (JSON)
+-- scrapeData.data.category        → sel_category
 -- lastRun                       → last_run
 -- (CRONOFF dans le name)        → active = 0
 --

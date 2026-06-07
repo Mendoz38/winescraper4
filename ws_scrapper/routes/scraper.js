@@ -127,7 +127,7 @@ const fetchAllPages = async (config) => {
  * Extrait les lignes depuis les pages fetchées.
  * dataConfig suit le format : { csv: [itemSelector, fieldMap], ...metaFields }
  */
-const extractRows = (pages, dataConfig) => {
+const extractRows = (pages, dataConfig, categoryLabel) => {
   const rows = [];
 
   for (const { $ } of pages) {
@@ -136,7 +136,11 @@ const extractRows = (pages, dataConfig) => {
 
     const meta = Object.fromEntries(Object.entries(result).filter(([k]) => k !== 'csv'));
     for (const row of result.csv) {
-      if (row && typeof row === 'object') rows.push({ ...row, ...meta });
+      if (row && typeof row === 'object') {
+        const merged = { ...row, ...meta };
+        if (categoryLabel && !merged.domaine) merged.domaine = categoryLabel;
+        rows.push(merged);
+      }
     }
   }
 
@@ -154,7 +158,9 @@ const scrape = async (config) => {
   if (!config?.url || !config?.data) throw new Error('config: url et data sont requis');
 
   const pages = await fetchAllPages(config);
-  const rows = extractRows(pages, config.data);
+  const categoryLabel =
+    typeof config.data?.category === 'string' && config.data.category.trim() ? config.data.category.trim() : config.sel_category;
+  const rows = extractRows(pages, config.data, categoryLabel);
   console.log('[scraper] done pages=', pages.length, 'rows=', rows.length);
   return rows;
 };
