@@ -139,6 +139,7 @@ const executeScrapeToCsv = async ({ id, scrapeData, outputDir, meta = {} }) => {
 
   return {
     outputFile,
+    rows,
     summary: {
       rawRows: rawRows.length,
       dedupedRows: rows.length,

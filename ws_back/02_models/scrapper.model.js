@@ -3,13 +3,24 @@ const { toScrapperDto } = require('../00_utils/scrapper.mapper');
 
 let db;
 
-const scraperBaseUrl = (process.env.SCRAPER_BASE_URL || 'http://localhost:3001').replace(/\/$/, '');
+const scraperBaseUrl = process.env.SCRAPER_BASE_URL;
 const scraperAuth = process.env.SCRAPER_USER ? { username: process.env.SCRAPER_USER, password: process.env.SCRAPER_PASSWORD } : undefined;
 
 const baseSelect = `
-  SELECT s.*, b.nom_boutique, b.en_ligne, b.payant, b.retrait
+  SELECT
+    s.*,
+    b.rss,
+    b.nom_boutique,
+    b.image,
+    b.height_image,
+    b.langue,
+    b.niveau AS boutique_niveau,
+    b.en_ligne,
+    b.payant,
+    b.retrait,
+    b.monnaie
   FROM com_scrapper s
-  LEFT JOIN com_boutiques b ON b.id = s.boutique_id
+  LEFT JOIN com_boutiques b ON (b.id = s.boutique_id OR b.rss = s.id)
 `;
 
 module.exports = (_db) => {

@@ -16,8 +16,8 @@ app.use(
 );
 app.use(express.json());
 
-const port = config.PORT;
-const users = config.users;
+const port = process.env.PORT;
+const users = JSON.parse(process.env.USERS);
 app.use(
   basicAuth({
     users: users,

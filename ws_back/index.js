@@ -4,6 +4,7 @@ const cors = require('cors');
 const db = require('./00_utils/db');
 const { query } = db;
 const scrappersRoutes = require('./01_routes/scrappers.routes');
+const boutiquesRoutes = require('./01_routes/boutiques.routes');
 const ScrapperModel = require('./02_models/scrapper.model')(db);
 const { createCronScheduler } = require('./03_services/scrapper-cron.service');
 
@@ -14,6 +15,7 @@ app.use(cors());
 app.use(express.json());
 
 app.use('/scrap', scrappersRoutes);
+app.use('/boutiques', boutiquesRoutes);
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
