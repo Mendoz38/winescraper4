@@ -74,7 +74,7 @@ class BoutiqueModel {
       );
 
       // Supprime les lignes hors stock
-      const [stockDelete] = await connection.execute(`DELETE FROM com_aaa WHERE boutique = ? AND TRIM(stock) = '0'`, [boutiqueName]);
+      // const [stockDelete] = await connection.execute(`DELETE FROM com_aaa WHERE boutique = ? AND TRIM(stock) = '0'`, [boutiqueName]);
 
       await connection.commit();
 
@@ -82,7 +82,7 @@ class BoutiqueModel {
         boutique: boutiqueName,
         inserted: rows.length,
         removedEmptyPrice: emptyPriceDelete?.affectedRows || 0,
-        removedOutOfStock: stockDelete?.affectedRows || 0,
+        // removedOutOfStock: stockDelete?.affectedRows || 0,
       };
     } catch (error) {
       await connection.rollback();
