@@ -19,82 +19,79 @@ interface Scraper {
   retrait: boolean | null;
   thecat: string | null;
   niveau: number | null;
+  retrait_db: string | null;
   a_scraper: boolean;
   active: boolean;
   last_run: string | null;
-  scrapeData?: {
-    url?: string[];
-  };
 }
+
+const bool = (v: boolean | null) => (v === null ? '-' : v ? 'Oui' : 'Non');
+const str = (v: string | null) => v ?? '-';
+
+// Filtre colonne générique
+const colSearch = (accessor: (r: Scraper) => unknown) => ({
+  filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }: any) => (
+    <div className="filter-dropdown">
+      <Input
+        placeholder="Rechercher"
+        value={selectedKeys[0]}
+        onChange={(e) => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+        onPressEnter={() => confirm()}
+        className="filter-input"
+      />
+      <Space>
+        <Button type="primary" size="small" icon={<SearchOutlined />} onClick={() => confirm()}>
+          OK
+        </Button>
+        <Button
+          size="small"
+          onClick={() => {
+            clearFilters?.();
+            confirm();
+          }}
+        >
+          Reset
+        </Button>
+      </Space>
+    </div>
+  ),
+  filterIcon: (filtered: boolean) => <SearchOutlined className={filtered ? 'filter-icon' : ''} />,
+  onFilter: (value: any, record: Scraper) =>
+    String(accessor(record) ?? '')
+      .toLowerCase()
+      .includes(String(value).toLowerCase()),
+});
 
 export function ListPage() {
   const { items, loading, error, refresh } = useScrappers();
   const navigate = useNavigate();
   const apiBase = import.meta.env.VITE_API_BASE_URL.replace(/\/$/, '');
-  const [boutiqueFilter, setBoutiqueFilter] = useState<string>('');
+  const [boutiqueFilter, setBoutiqueFilter] = useState('');
   const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
     setIsHydrated(true);
   }, []);
 
-  const filteredItems = items.filter((item) => {
-    if (!boutiqueFilter) return true;
-    return (item.nom_boutique ?? '').toLowerCase().includes(boutiqueFilter.toLowerCase());
-  });
+  const filteredItems = boutiqueFilter
+    ? items.filter((i) => (i.nom_boutique ?? '').toLowerCase().includes(boutiqueFilter.toLowerCase()))
+    : items;
 
-  const handleView = (id: string | number) => {
-    window.open(`${apiBase}/scrap/${id}/view`, '_blank');
+  const goEdit = (id: string | number) => navigate({ to: '/edit', search: { id } });
+  const goView = (id: string | number) => window.open(`${apiBase}/scrap/${id}/view`, '_blank');
+  const goDown = (id: string | number) => {
+    window.location.href = `${apiBase}/scrap/${id}/download?name=scraper_${id}`;
   };
-
-  const handleDownload = (id: string | number, name: string) => {
-    window.location.href = `${apiBase}/scrap/${id}/download?name=${encodeURIComponent(name)}`;
-  };
-  const handleScrape = async (id: string | number) => {
+  const goScrape = async (id: string | number) => {
     await fetch(`${apiBase}/scrap/${id}/run`);
     await refresh();
   };
 
-  const handleEditClick = (id: string | number) => {
-    navigate({ to: '/edit', search: { id } });
-  };
-
-  const getTextValue = (value: unknown) => (value === null || value === undefined ? '' : String(value));
-
-  const formatLastRun = (value: string | null) => {
-    if (!value) return '-';
-    return isHydrated ? dayjs(value).fromNow() : dayjs(value).format('YYYY-MM-DD HH:mm');
-  };
-
-  const getColumnSearchProps = (accessor: (record: Scraper) => unknown) => ({
-    filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }: any) => (
-      <div className="filter-dropdown">
-        <Input
-          placeholder="Rechercher"
-          value={selectedKeys[0]}
-          onChange={(e) => setSelectedKeys(e.target.value ? [e.target.value] : [])}
-          onPressEnter={() => confirm()}
-          className="filter-input"
-        />
-        <Space>
-          <Button type="primary" size="small" icon={<SearchOutlined />} onClick={() => confirm()}>
-            OK
-          </Button>
-          <Button
-            size="small"
-            onClick={() => {
-              clearFilters?.();
-              confirm();
-            }}
-          >
-            Reset
-          </Button>
-        </Space>
-      </div>
-    ),
-    filterIcon: (filtered: boolean) => <SearchOutlined className={filtered ? 'filter-icon' : ''} />,
-    onFilter: (value: any, record: Scraper) => getTextValue(accessor(record)).toLowerCase().includes(String(value).toLowerCase()),
-  });
+  const clickable = (id: string | number, label: React.ReactNode) => (
+    <span onClick={() => goEdit(id)} className="table-id-text">
+      {label}
+    </span>
+  );
 
   const columns: any[] = [
     {
@@ -103,101 +100,82 @@ export function ListPage() {
       key: 'id',
       width: 120,
       className: 'table-id-col',
-      sorter: (a: Scraper, b: Scraper) =>
-        String(a.id).localeCompare(String(b.id), undefined, {
-          numeric: true,
-          sensitivity: 'base',
-        }),
-      ...getColumnSearchProps((record: Scraper) => record.id),
-      render: (value: string | number) => (
-        <span onClick={() => handleEditClick(value)} className="table-id-text">
-          {value}
-        </span>
-      ),
+      sorter: (a: Scraper, b: Scraper) => String(a.id).localeCompare(String(b.id), undefined, { numeric: true }),
+      ...colSearch((r) => r.id),
+      render: (v: string | number) => clickable(v, v),
     },
     {
       title: 'Boutique',
       key: 'boutique',
-      sorter: (a: Scraper, b: Scraper) =>
-        String(a.nom_boutique ?? '').localeCompare(String(b.nom_boutique ?? ''), 'fr', { sensitivity: 'base' }),
-      render: (_: unknown, record: Scraper) =>
-        record.nom_boutique ? (
-          <span onClick={() => handleEditClick(record.id)} className="table-id-text">
-            {record.nom_boutique}
-          </span>
-        ) : (
-          <span onClick={() => handleEditClick(record.id)} className="table-id-text">
-            --
-          </span>
-        ),
+      sorter: (a: Scraper, b: Scraper) => (a.nom_boutique ?? '').localeCompare(b.nom_boutique ?? '', 'fr'),
+      render: (_: unknown, r: Scraper) => clickable(r.id, r.nom_boutique ?? '--'),
     },
     {
-      title: 'En ligne',
-      dataIndex: 'en_ligne',
-      key: 'en_ligne',
-      sorter: (a: Scraper, b: Scraper) => Number(a.en_ligne ?? -1) - Number(b.en_ligne ?? -1),
-      render: (value: boolean | null) => (value === null ? '-' : value ? 'Oui' : 'Non'),
+      title: 'Nivo',
+      dataIndex: 'niveau',
+      key: 'nivo',
+      sorter: (a: Scraper, b: Scraper) => Number(a.niveau ?? -1) - Number(b.niveau ?? -1),
+      ...colSearch((r) => r.niveau ?? ''),
+      render: str,
+    },
+    {
+      title: 'En retrait',
+      dataIndex: 'retrait_db',
+      key: 'retrait_db',
+      sorter: (a: Scraper, b: Scraper) => Number(a.retrait_db ?? -1) - Number(b.retrait_db ?? -1),
     },
     {
       title: 'Payant',
       dataIndex: 'payant',
       key: 'payant',
       sorter: (a: Scraper, b: Scraper) => Number(a.payant ?? -1) - Number(b.payant ?? -1),
-      render: (value: boolean | null) => (value === null ? '-' : value ? 'Oui' : 'Non'),
+      render: bool,
     },
     {
       title: 'Retrait',
       dataIndex: 'retrait',
       key: 'retrait',
       sorter: (a: Scraper, b: Scraper) => Number(a.retrait ?? -1) - Number(b.retrait ?? -1),
-      render: (value: boolean | null) => (value === null ? '-' : value ? 'Oui' : 'Non'),
+      render: bool,
     },
     {
       title: 'Cat',
       dataIndex: 'thecat',
       key: 'thecat',
-      sorter: (a: Scraper, b: Scraper) =>
-        String(a.thecat ?? '').localeCompare(String(b.thecat ?? ''), 'fr', {
-          sensitivity: 'base',
-        }),
-      ...getColumnSearchProps((record: Scraper) => record.thecat ?? ''),
-      render: (value: string | null) => value ?? '-',
+      sorter: (a: Scraper, b: Scraper) => (a.thecat ?? '').localeCompare(b.thecat ?? '', 'fr'),
+      ...colSearch((r) => r.thecat ?? ''),
+      render: str,
     },
     {
       title: 'Scrap',
       dataIndex: 'a_scraper',
       key: 'a_scraper',
       sorter: (a: Scraper, b: Scraper) => Number(a.a_scraper) - Number(b.a_scraper),
-      render: (value: boolean) => (value ? 'Oui' : 'Non'),
+      render: bool,
     },
     {
       title: 'Actif',
       dataIndex: 'active',
       key: 'active',
       sorter: (a: Scraper, b: Scraper) => Number(a.active) - Number(b.active),
-      render: (value: boolean) => (value ? 'Oui' : 'Non'),
+      render: bool,
     },
     {
       title: 'Dernier run',
       dataIndex: 'last_run',
       key: 'last_run',
       width: 150,
-      sorter: (a: Scraper, b: Scraper) => dayjs(a.last_run ?? '1970-01-01').valueOf() - dayjs(b.last_run ?? '1970-01-01').valueOf(),
-      render: (value: string | null) => formatLastRun(value),
+      sorter: (a: Scraper, b: Scraper) => dayjs(a.last_run ?? '1970').valueOf() - dayjs(b.last_run ?? '1970').valueOf(),
+      render: (v: string | null) => (v ? (isHydrated ? dayjs(v).fromNow() : dayjs(v).format('YYYY-MM-DD HH:mm')) : '-'),
     },
     {
       title: 'Actions',
       key: 'actions',
-      render: (_: unknown, record: Scraper) => (
+      render: (_: unknown, r: Scraper) => (
         <Space>
-          <Button size="small" icon={<ThunderboltOutlined />} onClick={() => void handleScrape(record.id)} title="Scrape" />
-          <Button size="small" icon={<EyeOutlined />} onClick={() => handleView(record.id)} title="Voir" />
-          <Button
-            size="small"
-            icon={<DownloadOutlined />}
-            onClick={() => handleDownload(record.id, `scraper_${record.id}`)}
-            title="Télécharger"
-          />
+          <Button size="small" icon={<ThunderboltOutlined />} onClick={() => void goScrape(r.id)} title="Scrape" />
+          <Button size="small" icon={<EyeOutlined />} onClick={() => goView(r.id)} title="Voir" />
+          <Button size="small" icon={<DownloadOutlined />} onClick={() => goDown(r.id)} title="Télécharger" />
         </Space>
       ),
     },
@@ -217,10 +195,10 @@ export function ListPage() {
           </button>
         </div>
 
-        {loading ? <p className="loading-text">Chargement…</p> : null}
-        {error ? <p className="error-text">{error}</p> : null}
+        {loading && <p className="loading-text">Chargement…</p>}
+        {error && <p className="error-text">{error}</p>}
 
-        {!loading && !error ? (
+        {!loading && !error && (
           <>
             <div className="mb-4">
               <Input
@@ -232,7 +210,7 @@ export function ListPage() {
             </div>
             <Table dataSource={filteredItems} columns={columns} rowKey="id" pagination={false} />
           </>
-        ) : null}
+        )}
       </section>
     </main>
   );

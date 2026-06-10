@@ -76,6 +76,9 @@ class BoutiqueModel {
       // Supprime les lignes hors stock
       // const [stockDelete] = await connection.execute(`DELETE FROM com_aaa WHERE boutique = ? AND TRIM(stock) = '0'`, [boutiqueName]);
 
+      // Met à jour la date de mise à jour de la boutique
+      await connection.execute(`UPDATE com_boutiques SET maj = ? WHERE nom_boutique = ?`, [nowUnix, boutiqueName]);
+
       await connection.commit();
 
       return {
