@@ -19,6 +19,8 @@ type EditFormValues = {
   mode: string | null;
   pagination: string | null;
   load_more: string | null;
+  add_url_image: string | null;
+  add_url: string | null;
   item_selector: string | null;
   sel_domaine: string | null;
   sel_cuvee: string | null;
@@ -71,6 +73,8 @@ export function EditPage() {
           mode: found.mode ?? found.scrapeData?.mode ?? null,
           pagination: found.pagination ?? found.scrapeData?.pagination ?? null,
           load_more: found.load_more ?? found.scrapeData?.load_more ?? null,
+          add_url_image: found.add_url_image,
+          add_url: found.add_url,
           item_selector: (csvTuple?.[0] as string | null) ?? null,
           sel_domaine: (csvFields.domaine as string | null) ?? null,
           sel_cuvee: (csvFields.cuvee as string | null) ?? null,
@@ -225,6 +229,18 @@ export function EditPage() {
                   <Input />
                 </Form.Item>
               </div>
+
+              <h2>Les url à rajouter si les scraps sont en relatif</h2>
+              <div className="input-deux-colonnes">
+                <Form.Item label="Add URL image" name="add_url_image" className="floating-label">
+                  <Input />
+                </Form.Item>
+
+                <Form.Item label="Add URL" name="add_url" className="floating-label">
+                  <Input />
+                </Form.Item>
+              </div>
+
               <Space>
                 <Button type="primary" htmlType="submit" loading={loading}>
                   Sauvegarder

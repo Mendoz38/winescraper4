@@ -46,6 +46,10 @@ CREATE TABLE `com_scrapper` (
     -- Peut être une string CSS simple ou un objet {"selector":"...", "scrape":["attr","alt"]}
     `sel_category`    VARCHAR(255)    NULL,  
 
+    -- Les ajouts des url image et url si ils ne sont pas scrappés
+    `add_url_image`   VARCHAR(255)    NULL,  
+    `add_url`         VARCHAR(255)    NULL,  
+
     -- --------------------------------------------------------
     -- Suivi d'exécution
     -- --------------------------------------------------------

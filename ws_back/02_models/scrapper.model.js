@@ -47,6 +47,7 @@ class ScrapperModel {
         boutique_id = ?, thecat = ?, niveau = ?, a_scraper = ?,
         hour_cron = ?, day_cron = ?, urls = ?, mode = ?,
         pagination = ?, load_more = ?, item_selector = ?,
+        add_url_image = ?, add_url = ?,
         sel_domaine = ?, sel_cuvee = ?, sel_prix = ?, sel_stock = ?,
         sel_image = ?, sel_link = ?, sel_category = ?, active = ?
       WHERE id = ?`,
@@ -62,6 +63,8 @@ class ScrapperModel {
         body.pagination || null,
         body.load_more || null,
         body.item_selector || null,
+        body.add_url_image || null,
+        body.add_url || null,
         body.sel_domaine || null,
         body.sel_cuvee || null,
         body.sel_prix || null,

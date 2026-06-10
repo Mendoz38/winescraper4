@@ -14,6 +14,8 @@ export type Scrapper = {
   mode: string | null;
   pagination: string | null;
   load_more: string | null;
+  add_url_image: string | null;
+  add_url: string | null;
   last_run: string | null;
   scrapeData?: {
     url: string[];

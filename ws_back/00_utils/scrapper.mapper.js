@@ -62,6 +62,8 @@ const toScrapperDto = (row) => ({
   mode: row.mode,
   pagination: row.pagination,
   load_more: row.load_more,
+  add_url_image: row.add_url_image ?? null,
+  add_url: row.add_url ?? null,
   last_run: row.last_run,
   created_at: row.created_at,
   updated_at: row.updated_at,
