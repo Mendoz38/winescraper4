@@ -166,7 +166,51 @@ export function ListPage() {
       key: 'last_run',
       width: 150,
       sorter: (a: Scraper, b: Scraper) => dayjs(a.last_run ?? '1970').valueOf() - dayjs(b.last_run ?? '1970').valueOf(),
-      render: (v: string | null) => (v ? (isHydrated ? dayjs(v).fromNow() : dayjs(v).format('YYYY-MM-DD HH:mm')) : '-'),
+      render: (v: string | null) => {
+        if (!v) {
+          return { props: { style: { backgroundColor: '#000', color: '#fff' } }, children: '-' };
+        }
+
+        const diffSec = dayjs().diff(dayjs(v), 'second');
+        let bg = '#5e1717';
+        let color = '#fff';
+
+        if (diffSec >= 1500000000) {
+          bg = '#000';
+          color = '#fff';
+        } else if (diffSec <= 3600) {
+          bg = '#74d99f';
+          color = '#000';
+        } else if (diffSec <= 3 * 3600) {
+          bg = '#a8eec1';
+          color = '#000';
+        } else if (diffSec <= 6 * 3600) {
+          bg = '#e3fcec';
+          color = '#000';
+        } else if (diffSec <= 24 * 3600) {
+          bg = '#fff';
+          color = '#000';
+        } else if (diffSec <= 2 * 86400) {
+          bg = '#fce8e8';
+          color = '#000';
+        } else if (diffSec <= 3 * 86400) {
+          bg = '#f4aaaa';
+          color = '#000';
+        } else if (diffSec <= 7 * 86400) {
+          bg = '#eb8484';
+          color = '#000';
+        } else if (diffSec <= 30 * 86400) {
+          bg = '#e36363';
+          color = '#000';
+        }
+
+        const text = isHydrated ? dayjs(v).fromNow() : dayjs(v).format('YYYY-MM-DD HH:mm');
+
+        return {
+          props: { style: { backgroundColor: bg, color } },
+          children: text,
+        };
+      },
     },
     {
       title: 'Actions',

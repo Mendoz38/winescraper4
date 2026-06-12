@@ -55,33 +55,6 @@ const getFields = (rows) => {
   return hasCuvee ? BASE_FIELDS : BASE_FIELDS.filter((f) => f !== 'cuvee');
 };
 
-// ─── Déduplication ────────────────────────────────────────────────────────────
-
-const dedupeRows = (rows) => {
-  const seen = new Set();
-  let duplicates = 0;
-  const out = [];
-
-  for (const row of rows) {
-    const key = row.link?.trim()
-      ? `link§${row.link.trim()}`
-      : `combo§${[row.domaine, row.cuvee, row.prix]
-          .map((v) =>
-            String(v ?? '')
-              .trim()
-              .toLowerCase()
-          )
-          .join('|')}`;
-
-    if (!seen.has(key)) {
-      seen.add(key);
-      out.push(row);
-    } else duplicates++;
-  }
-
-  return { rows: out, duplicates };
-};
-
 // ─── Export CSV ───────────────────────────────────────────────────────────────
 
 const escapeCell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
@@ -115,7 +88,7 @@ const writeCsv = (filePath, rows, fields) =>
 // ─── Pipeline principal ───────────────────────────────────────────────────────
 
 /**
- * Scrape, nettoie, déduplique et écrit un CSV.
+ * Scrape, nettoie et écrit un CSV.
  *
  * @param {{ id: string, scrapeData: object, outputDir: string }}
  * @returns {Promise<{ outputFile: string, summary: object }>}
@@ -128,22 +101,21 @@ const executeScrapeToCsv = async ({ id, scrapeData, outputDir, meta = {} }) => {
   const rawRows = await scrapeWithRetry(scrapeData, maxAttempts, timeoutMs);
   const cleanedRows = rawRows.map(cleanRow);
 
-  const { rows, duplicates } = dedupeRows(cleanedRows);
-  const fields = getFields(rows);
+  const fields = getFields(cleanedRows);
 
-  warnEmptyFields(rows, id, fields);
+  warnEmptyFields(cleanedRows, id, fields);
 
   const outputFile = path.join(outputDir, `${id}.csv`);
-  await writeCsv(outputFile, rows, fields);
-  console.log('[csv] ✅', meta.nom_boutique || id, '📈 Total de lignes :', rows.length);
+  await writeCsv(outputFile, cleanedRows, fields);
+  console.log('[csv] ✅', meta.nom_boutique || id, '📈 Total de lignes :', cleanedRows.length);
 
   return {
     outputFile,
-    rows,
+    rows: cleanedRows,
     summary: {
       rawRows: rawRows.length,
-      dedupedRows: rows.length,
-      duplicates,
+      dedupedRows: cleanedRows.length,
+      duplicates: 0,
       durationMs: Date.now() - t0,
     },
   };
