@@ -7,6 +7,26 @@ module.exports = (_db) => {
 
 const toStr = (v) => (v == null ? '' : String(v).trim());
 
+/**
+ * Préfixe une URL relative avec une base (add_url / add_url_image).
+ * Si l'URL est déjà absolue (http, https, data, //), elle est conservée.
+ * @param {unknown} value URL brute extraite du scrape
+ * @param {string} base Préfixe à ajouter
+ * @returns {string}
+ */
+const prependBaseUrl = (value, base) => {
+  const rawValue = toStr(value);
+  const rawBase = toStr(base);
+
+  if (!rawValue) return '';
+  if (!rawBase) return rawValue;
+  if (/^(https?:)?\/\//i.test(rawValue) || rawValue.startsWith('data:')) return rawValue;
+
+  const cleanBase = rawBase.endsWith('/') ? rawBase.slice(0, -1) : rawBase;
+  const cleanValue = rawValue.startsWith('/') ? rawValue.slice(1) : rawValue;
+  return `${cleanBase}/${cleanValue}`;
+};
+
 const BATCH_SIZE = 500;
 
 class BoutiqueModel {
@@ -32,6 +52,8 @@ class BoutiqueModel {
     const retrait = toStr(meta.retrait_db ?? meta.retrait);
     const niveau = toStr(meta.niveau);
     const monnaie = toStr(meta.monnaie);
+    const addUrlImage = toStr(meta.add_url_image);
+    const addUrl = toStr(meta.add_url);
 
     const connection = await db.pool.getConnection();
     try {
@@ -47,8 +69,8 @@ class BoutiqueModel {
           toStr(row?.domaine),
           toStr(row?.cuvee),
           toStr(row?.prix),
-          toStr(row?.image),
-          toStr(row?.link || row?.url),
+          prependBaseUrl(row?.image, addUrlImage),
+          prependBaseUrl(row?.link || row?.url, addUrl),
           toStr(row?.stock),
           boutiqueName,
           imgBoutique,
