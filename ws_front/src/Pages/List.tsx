@@ -1,7 +1,7 @@
 import { useNavigate } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { Table, Button, Space, Input } from 'antd';
-import { EyeOutlined, DownloadOutlined, ThunderboltOutlined, SearchOutlined } from '@ant-design/icons';
+import { EyeOutlined, ThunderboltOutlined, SearchOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/fr';
@@ -19,6 +19,7 @@ interface Scraper {
   retrait: boolean | null;
   thecat: string | null;
   niveau: number | null;
+  scrapper_niveau: number | null;
   retrait_db: string | null;
   a_scraper: boolean;
   active: boolean;
@@ -34,20 +35,20 @@ const colSearch = (accessor: (r: Scraper) => unknown) => ({
     <div className="filter-dropdown">
       <Input
         placeholder="Rechercher"
-        value={selectedKeys[0]}
+        value={selectedKeys[0] ?? ''}
         onChange={(e) => setSelectedKeys(e.target.value ? [e.target.value] : [])}
-        onPressEnter={() => confirm()}
+        onPressEnter={() => confirm({ closeDropdown: true })}
         className="filter-input"
       />
       <Space>
-        <Button type="primary" size="small" icon={<SearchOutlined />} onClick={() => confirm()}>
+        <Button type="primary" size="small" icon={<SearchOutlined />} onClick={() => confirm({ closeDropdown: true })}>
           OK
         </Button>
         <Button
           size="small"
           onClick={() => {
             clearFilters?.();
-            confirm();
+            confirm({ closeDropdown: true });
           }}
         >
           Reset
@@ -56,10 +57,12 @@ const colSearch = (accessor: (r: Scraper) => unknown) => ({
     </div>
   ),
   filterIcon: (filtered: boolean) => <SearchOutlined className={filtered ? 'filter-icon' : ''} />,
-  onFilter: (value: any, record: Scraper) =>
-    String(accessor(record) ?? '')
+  onFilter: (value: any, record: Scraper) => {
+    const filterVal = Array.isArray(value) ? value[0] : value;
+    return String(accessor(record) ?? '')
       .toLowerCase()
-      .includes(String(value).toLowerCase()),
+      .includes(String(filterVal ?? '').toLowerCase());
+  },
 });
 
 export function ListPage() {
@@ -79,9 +82,6 @@ export function ListPage() {
 
   const goEdit = (id: string | number) => navigate({ to: '/edit', search: { id } });
   const goView = (id: string | number) => window.open(`${apiBase}/scrap/${id}/view`, '_blank');
-  const goDown = (id: string | number) => {
-    window.location.href = `${apiBase}/scrap/${id}/download?name=scraper_${id}`;
-  };
   const goScrape = async (id: string | number) => {
     await fetch(`${apiBase}/scrap/${id}/run`);
     await refresh();
@@ -114,9 +114,29 @@ export function ListPage() {
       title: 'Nivo',
       dataIndex: 'niveau',
       key: 'nivo',
-      sorter: (a: Scraper, b: Scraper) => Number(a.niveau ?? -1) - Number(b.niveau ?? -1),
-      ...colSearch((r) => r.niveau ?? ''),
-      render: str,
+      sorter: (a: Scraper, b: Scraper) => {
+        const na = Number(a.niveau);
+        const nb = Number(b.niveau);
+        const va = Number.isFinite(na) ? na : -Infinity;
+        const vb = Number.isFinite(nb) ? nb : -Infinity;
+        return va - vb;
+      },
+      ...colSearch((r: Scraper) => (r.niveau == null ? '' : String(r.niveau))),
+      render: (v: number | null) => (v == null ? '-' : String(v)),
+    },
+    {
+      title: 'Nivo2',
+      dataIndex: 'scrapper_niveau',
+      key: 'scrapper_niveau',
+      sorter: (a: Scraper, b: Scraper) => {
+        const na = Number(a.scrapper_niveau);
+        const nb = Number(b.scrapper_niveau);
+        const va = Number.isFinite(na) ? na : -Infinity;
+        const vb = Number.isFinite(nb) ? nb : -Infinity;
+        return va - vb;
+      },
+      ...colSearch((r: Scraper) => (r.scrapper_niveau == null ? '' : String(r.scrapper_niveau))),
+      render: (v: number | null) => (v == null ? '-' : String(v)),
     },
     {
       title: 'En retrait',
@@ -219,7 +239,6 @@ export function ListPage() {
         <Space>
           <Button size="small" icon={<ThunderboltOutlined />} onClick={() => void goScrape(r.id)} title="Scrape" />
           <Button size="small" icon={<EyeOutlined />} onClick={() => goView(r.id)} title="Voir" />
-          <Button size="small" icon={<DownloadOutlined />} onClick={() => goDown(r.id)} title="Télécharger" />
         </Space>
       ),
     },
