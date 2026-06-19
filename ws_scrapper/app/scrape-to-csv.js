@@ -2,14 +2,17 @@ const fs = require('fs');
 const path = require('path');
 const { scrape } = require('../routes/scraper');
 const { epur } = require('../routes/text-utils');
+const { FIELD_POLLUTIONS } = require('./field-pollutions');
 
 const DEFAULT_MAX_ATTEMPTS = 3;
-const DEFAULT_TIMEOUT_MS = 180_000;
+const DEFAULT_TIMEOUT_MS = 600_000;
 
 // ─── Retry avec backoff linéaire ─────────────────────────────────────────────
 
 const withTimeout = (promise, ms) =>
   Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(new Error(`Timeout après ${ms}ms`)), ms))]);
+
+const isTimeoutError = (err) => String(err?.message ?? '').startsWith('Timeout après');
 
 const scrapeWithRetry = async (config, maxAttempts, timeoutMs) => {
   let lastError;
@@ -20,6 +23,9 @@ const scrapeWithRetry = async (config, maxAttempts, timeoutMs) => {
     } catch (err) {
       lastError = err;
       console.log('[csv] scrape:failed attempt=', attempt, 'error=', err?.message ?? String(err));
+      // Le timeout global ne stoppe pas le scrape en cours (Promise.race).
+      // On évite donc de relancer d'autres tentatives en parallèle.
+      if (isTimeoutError(err)) break;
       if (attempt < maxAttempts) await new Promise((r) => setTimeout(r, attempt * 1500));
     }
   }
@@ -28,8 +34,22 @@ const scrapeWithRetry = async (config, maxAttempts, timeoutMs) => {
 
 // ─── Nettoyage des lignes ─────────────────────────────────────────────────────
 
+/**
+ * Nettoie les pollutions textuelles d'une valeur selon sa colonne,
+ * puis applique epur(). Les tokens sont définis dans field-pollutions.js.
+ */
 const cleanRow = (row) =>
-  Object.fromEntries(Object.entries(row).map(([k, v]) => [k, v == null ? '' : typeof v === 'string' ? (epur(v) ?? '') : v]));
+  Object.fromEntries(
+    Object.entries(row).map(([k, v]) => {
+      if (v == null || typeof v !== 'string') return [k, v ?? ''];
+      const tokens = FIELD_POLLUTIONS[k] ?? [];
+      const cleaned = tokens.reduce(
+        (s, token) => (typeof token === 'string' ? s.replaceAll(token, '') : s.replaceAll(token.from, token.to)),
+        v
+      );
+      return [k, epur(cleaned) ?? ''];
+    })
+  );
 
 // ─── Colonnes attendues ───────────────────────────────────────────────────────
 
