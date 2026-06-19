@@ -109,19 +109,4 @@ class ScrapperModel {
     return data;
   }
 
-  static async downloadScrapper(id, name) {
-    const rawName = name || `scrapper_${id}`;
-    const { data, headers } = await axios.get(`${scraperBaseUrl}/download/${id}/${encodeURIComponent(rawName)}`, {
-      auth: scraperAuth,
-      responseType: 'arraybuffer',
-      timeout: 120000,
-    });
-    return {
-      data,
-      headers: {
-        contentType: headers['content-type'] || 'text/csv; charset=utf-8',
-        contentDisposition: headers['content-disposition'] || `attachment; filename="${rawName}.csv"`,
-      },
-    };
-  }
 }

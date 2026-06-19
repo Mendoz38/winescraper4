@@ -28,18 +28,6 @@ router.get('/:id/run', async (req, res) => {
   }
 });
 
-// route pour télécharger le CSV généré pour un scrapper
-router.get('/:id/download', async (req, res) => {
-  try {
-    const file = await ScrapperModel.downloadScrapper(req.params.id, req.query.name);
-    res.setHeader('content-type', file.headers.contentType);
-    res.setHeader('content-disposition', file.headers.contentDisposition);
-    return res.send(file.data);
-  } catch (error) {
-    return sendError(res, error);
-  }
-});
-
 // route pour lister tous les scrappers (option active=true|1)
 router.get('/', async (req, res) => {
   try {

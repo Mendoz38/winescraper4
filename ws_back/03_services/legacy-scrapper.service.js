@@ -38,29 +38,7 @@ async function runScrapper(id) {
   }
 }
 
-async function downloadScrapper(id, name) {
-  try {
-    const rawName = name || `scrapper_${id}`;
-    const response = await axios.get(`${scraperBaseUrl}/download/${id}/${encodeURIComponent(rawName)}`, {
-      auth: scraperAuth,
-      responseType: "arraybuffer",
-      timeout: 120000,
-    });
-
-    return {
-      data: response.data,
-      headers: {
-        contentType: response.headers["content-type"] || "text/csv; charset=utf-8",
-        contentDisposition: response.headers["content-disposition"] || `attachment; filename="${rawName}.csv"`,
-      },
-    };
-  } catch (error) {
-    throw toServiceError(error);
-  }
-}
-
 module.exports = {
   viewScrapper,
   runScrapper,
-  downloadScrapper,
 };

@@ -5,10 +5,6 @@
 /.pnp
 .pnp.js
 
-# csv
-/csv/*
-/csv2/*
-
 # data
 /data/config.json
 

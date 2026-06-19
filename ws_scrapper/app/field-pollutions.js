@@ -1,8 +1,8 @@
 /**
- * Règles de nettoyage par colonne, appliquées avant export CSV et import BDD.
+ * Règles de nettoyage par colonne, appliquées avant import BDD.
  *
- * - string        : supprime la chaîne (remplacement par '')
- * - { from, to }  : remplacement textuel
+ * Chaque clé correspond à une colonne cible ; chaque valeur est une liste
+ * de remplacements appliqués dans l'ordre.
  */
 const FIELD_POLLUTIONS = {
   prix: [

@@ -1,14 +1,10 @@
-const path = require('path');
 const axios = require('axios');
-const slug = require('slug');
 const { scrape } = require('../routes/scraper');
-const { executeScrapeToCsv } = require('./scrape-to-csv');
-
-const csvOutputDir = path.join(__dirname, '..', 'csv');
+const { executeScrape } = require('./run-scrape');
 const backBaseUrl = process.env.WS_BACK_BASE_URL;
 
 module.exports = (app) => {
-  // Aperçu brut (pas de CSV, pas de déduplication)
+  // Aperçu brut
   app.post('/scrape', async (req, res) => {
     try {
       const { id, scrapeData } = req.body;
@@ -21,12 +17,12 @@ module.exports = (app) => {
     }
   });
 
-  // Run complet → CSV (payload POST)
+  // Run complet → import BDD (payload POST)
   app.post('/run', async (req, res) => {
     try {
       const { id, scrapeData, meta } = req.body;
       console.log('[routes] run:start id=', id);
-      const result = await executeScrapeToCsv({ id, scrapeData, outputDir: csvOutputDir, meta });
+      const result = await executeScrape({ id, scrapeData, meta });
 
       const encodedBoutique = encodeURIComponent(meta.nom_boutique);
       const { data: dbImport } = await axios.post(`${backBaseUrl}/boutiques/${encodedBoutique}/import`, {
@@ -39,11 +35,5 @@ module.exports = (app) => {
       console.error('[routes] run:error', err);
       res.status(500).json({ error: err?.message ?? String(err) });
     }
-  });
-
-  // Téléchargement du CSV généré
-  app.get('/download/:id/:name', (req, res) => {
-    const file = path.join(csvOutputDir, `${req.params.id}.csv`);
-    res.download(file, slug(req.params.name) + '.csv');
   });
 };
