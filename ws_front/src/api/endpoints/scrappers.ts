@@ -7,6 +7,7 @@ export type Scrapper = {
   retrait: boolean | null;
   thecat: string | null;
   niveau: number | null;
+  scrapper_niveau?: number | null;
   a_scraper: boolean;
   active: boolean;
   day_cron: string | null;

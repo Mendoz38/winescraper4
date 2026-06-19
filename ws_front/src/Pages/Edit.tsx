@@ -65,7 +65,7 @@ export function EditPage() {
           id: found.id,
           boutique_id: found.boutique_id,
           thecat: found.thecat,
-          niveau: found.niveau,
+          niveau: found.scrapper_niveau ?? found.niveau,
           a_scraper: found.a_scraper,
           active: found.active,
           hour_cron: found.hour_cron,
@@ -188,11 +188,11 @@ export function EditPage() {
                 </Form.Item>
               </div>
 
-              <Form.Item label="Pagination" name="pagination" className="floating-label">
+              <Form.Item label="Pagination (ex: .next[rel=next])" name="pagination" className="floating-label">
                 <Input />
               </Form.Item>
 
-              <Form.Item label="Load more" name="load_more" className="floating-label">
+              <Form.Item label="Load more (ex: .load-more-btn[data-load])" name="load_more" className="floating-label">
                 <Input />
               </Form.Item>
 

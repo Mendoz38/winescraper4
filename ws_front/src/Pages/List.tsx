@@ -69,7 +69,7 @@ export function ListPage() {
   const { items, loading, error, refresh } = useScrappers();
   const navigate = useNavigate();
   const apiBase = import.meta.env.VITE_API_BASE_URL.replace(/\/$/, '');
-  const [boutiqueFilter, setBoutiqueFilter] = useState('');
+  const [boutiqueFilter, setBoutiqueFilter] = useState(() => localStorage.getItem('list:boutique-filter') ?? '');
   const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
@@ -113,7 +113,7 @@ export function ListPage() {
     {
       title: 'Nivo',
       dataIndex: 'niveau',
-      key: 'nivo',
+      key: 'id',
       sorter: (a: Scraper, b: Scraper) => {
         const na = Number(a.niveau);
         const nb = Number(b.niveau);
@@ -267,7 +267,12 @@ export function ListPage() {
               <Input
                 placeholder="Rechercher par nom de boutique..."
                 value={boutiqueFilter}
-                onChange={(e) => setBoutiqueFilter(e.target.value)}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setBoutiqueFilter(v);
+                  if (v) localStorage.setItem('list:boutique-filter', v);
+                  else localStorage.removeItem('list:boutique-filter');
+                }}
                 allowClear
               />
             </div>
