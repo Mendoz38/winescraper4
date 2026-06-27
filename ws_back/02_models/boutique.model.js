@@ -8,6 +8,29 @@ module.exports = (_db) => {
 const toStr = (v) => (v == null ? '' : String(v).trim());
 
 /**
+ * Vérifie si un domaine scrappé correspond à l'un des vignerons du site (recherche partielle LIKE).
+ * @param {string} domaineRow Domaine de la ligne scrappée
+ * @param {Array} vignerons Liste des vignerons avec domaine, dom_commerce, dom_commerce2
+ * @returns {boolean}
+ */
+const isVigneronFromSite = (domaineRow, vignerons) => {
+  const rowLower = toStr(domaineRow).toLowerCase();
+  return vignerons.some((v) => {
+    const domLower = toStr(v.domaine).toLowerCase();
+    const com1Lower = toStr(v.dom_commerce).toLowerCase();
+    const com2Lower = toStr(v.dom_commerce2).toLowerCase();
+    return (
+      rowLower.includes(domLower) ||
+      rowLower.includes(com1Lower) ||
+      rowLower.includes(com2Lower) ||
+      domLower.includes(rowLower) ||
+      com1Lower.includes(rowLower) ||
+      com2Lower.includes(rowLower)
+    );
+  });
+};
+
+/**
  * Préfixe une URL relative avec une base (add_url / add_url_image).
  * Si l'URL est déjà absolue (http, https, data, //), elle est conservée.
  * @param {unknown} value URL brute extraite du scrape
@@ -28,6 +51,8 @@ const prependBaseUrl = (value, base) => {
 };
 
 const BATCH_SIZE = 500;
+// Mettre à false pour désactiver le filtre vignerons
+const ENABLE_VIGNERON_FILTER = true;
 
 class BoutiqueModel {
   //--------- UPSERT boutiques rows ------------//
@@ -59,12 +84,20 @@ class BoutiqueModel {
     try {
       await connection.beginTransaction();
 
+      // Récupère les vignerons présents sur le site
+      const vignerons = await db.query(`
+        SELECT domaine, dom_commerce, dom_commerce2 FROM vn_viticulteur
+      `);
+
+      // Filtre les lignes : garder uniquement celles avec un domaine du site
+      const filteredRows = ENABLE_VIGNERON_FILTER ? rows.filter((row) => isVigneronFromSite(row?.domaine, vignerons)) : rows;
+
       // Supprime toutes les lignes existantes pour cette boutique
       await connection.execute('DELETE FROM com_aaa WHERE boutique = ?', [boutiqueName]);
 
       // Insert par chunks de BATCH_SIZE pour éviter max_allowed_packet
-      for (let i = 0; i < rows.length; i += BATCH_SIZE) {
-        const chunk = rows.slice(i, i + BATCH_SIZE);
+      for (let i = 0; i < filteredRows.length; i += BATCH_SIZE) {
+        const chunk = filteredRows.slice(i, i + BATCH_SIZE);
         const values = chunk.map((row) => [
           toStr(row?.domaine),
           toStr(row?.cuvee),
@@ -105,7 +138,8 @@ class BoutiqueModel {
 
       return {
         boutique: boutiqueName,
-        inserted: rows.length,
+        inserted: filteredRows.length,
+        filteredOut: rows.length - filteredRows.length,
         removedEmptyPrice: emptyPriceDelete?.affectedRows || 0,
         // removedOutOfStock: stockDelete?.affectedRows || 0,
       };
