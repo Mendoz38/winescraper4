@@ -17,7 +17,12 @@ const epur = (str) => {
 const normalizeImageSrc = (value) => {
   const v = epur(value);
   if (!v) return null;
-  if (v.includes(',')) return epur(v.split(',')[0].split(' ')[0]);
+  // Ne traiter comme srcset que si un descripteur (1x, 2x, 300w...) est présent.
+  // Évite de tronquer les URLs (ex: Wix) qui contiennent des virgules dans le chemin.
+  if (/\s\d+(\.\d+)?[wx](,|$)/i.test(v)) {
+    const match = v.match(/^(.*?)\s\d+(\.\d+)?[wx]/i);
+    if (match?.[1]) return epur(match[1]);
+  }
   if (v.includes(' ') && /^https?:\/\//i.test(v)) return epur(v.split(' ')[0]);
   return v;
 };
