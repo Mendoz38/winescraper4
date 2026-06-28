@@ -70,6 +70,4 @@ const toScrapperDto = (row) => ({
   scrapeData: toLegacyScrapeData(row),
 });
 
-module.exports = {
-  toScrapperDto,
-};
+module.exports = { toScrapperDto };

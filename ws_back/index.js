@@ -1,12 +1,10 @@
 const express = require('express');
 const cors = require('cors');
 
-const db = require('./00_utils/db');
-const { query } = db;
+const { query } = require('./00_utils/db');
 const scrappersRoutes = require('./01_routes/scrappers.routes');
 const boutiquesRoutes = require('./01_routes/boutiques.routes');
 const vigneronsRoutes = require('./01_routes/vignerons.routes');
-const ScrapperModel = require('./02_models/scrapper.model')(db);
 const { createCronScheduler } = require('./03_services/scrapper-cron.service');
 
 const app = express();
@@ -19,11 +17,9 @@ app.use('/scrap', scrappersRoutes);
 app.use('/boutiques', boutiquesRoutes);
 app.use('/vignerons', vigneronsRoutes);
 
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok' });
-});
+app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 
-app.get('/ready', async (req, res) => {
+app.get('/ready', async (_req, res) => {
   try {
     await query('SELECT 1 as ok');
     res.json({ status: 'ready' });
@@ -32,7 +28,7 @@ app.get('/ready', async (req, res) => {
   }
 });
 
-const cronScheduler = createCronScheduler({ scrapperModel: ScrapperModel });
+const cronScheduler = createCronScheduler();
 
 app.listen(port, () => {
   console.log(`

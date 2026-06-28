@@ -1,17 +1,14 @@
 const express = require('express');
-const db = require('../00_utils/db');
-const BoutiqueModel = require('../02_models/boutique.model')(db);
+const { replaceBoutiqueRows } = require('../02_models/boutique.model');
 
 const router = express.Router();
 
-function sendError(res, error) {
-  return res.status(error.status || 500).json({ error: error.message });
-}
+const sendError = (res, error) => res.status(error.status || 500).json({ error: error.message });
 
 //--------- INSERT boutiques by scrape ------------//
 router.post('/:boutique/import', async (req, res) => {
   try {
-    const data = await BoutiqueModel.replaceBoutiqueRows({
+    const data = await replaceBoutiqueRows({
       boutique: req.params.boutique,
       rows: req.body?.rows,
       meta: req.body?.meta,

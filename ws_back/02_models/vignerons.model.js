@@ -6,7 +6,7 @@ module.exports = (_db) => {
 };
 
 class VigneronsModel {
-  //--------- SELECT Photos by Vignerons ------------//
+  //--------- SELECT dénomination VIGNERONS ------------//
   static async getVigneronsSite() {
     return db.query(`
       SELECT

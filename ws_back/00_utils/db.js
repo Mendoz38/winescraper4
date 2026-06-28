@@ -1,4 +1,4 @@
-const mysql = require("mysql2/promise");
+const mysql = require('mysql2/promise');
 
 const pool = mysql.createPool({
   host: process.env.DB_HOST,
@@ -16,7 +16,4 @@ async function query(sql, params = []) {
   return rows;
 }
 
-module.exports = {
-  pool,
-  query,
-};
+module.exports = { pool, query };
