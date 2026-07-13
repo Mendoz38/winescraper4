@@ -34,20 +34,25 @@ export type Scrapper = {
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
+type ApiEnvelope<T> = {
+  result?: T;
+};
+
 // get all scrappers
 export async function fetchScrappers(): Promise<Scrapper[]> {
-  const response = await fetch(`${API_BASE}/scrap`);
+  const response = await fetch(`${API_BASE}/ws/scrappers`);
 
   if (!response.ok) {
     throw new Error(`Erreur ${response.status}`);
   }
 
-  return (await response.json()) as Scrapper[];
+  const body = (await response.json()) as ApiEnvelope<Scrapper[]>;
+  return body.result ?? [];
 }
 
 // get scrapper by id
 export async function fetchScrapper(id: string): Promise<Scrapper> {
-  const response = await fetch(`${API_BASE}/scrap/${id}`);
+  const response = await fetch(`${API_BASE}/ws/scrappers/${id}`);
 
   if (!response.ok) {
     throw new Error(`Erreur ${response.status}`);
@@ -58,7 +63,7 @@ export async function fetchScrapper(id: string): Promise<Scrapper> {
 
 // update scrapper
 export async function updateScrapper(id: string, payload: Scrapper): Promise<Scrapper> {
-  const response = await fetch(`${API_BASE}/scrap/${id}`, {
+  const response = await fetch(`${API_BASE}/ws/scrappers/${id}`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
@@ -70,5 +75,6 @@ export async function updateScrapper(id: string, payload: Scrapper): Promise<Scr
     throw new Error(`Erreur ${response.status}`);
   }
 
-  return (await response.json()) as Scrapper;
+  const body = (await response.json()) as ApiEnvelope<Scrapper>;
+  return body.result as Scrapper;
 }

@@ -11,6 +11,7 @@ const withTimeout = (promise, ms) =>
   Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(new Error(`Timeout après ${ms}ms`)), ms))]);
 
 const isTimeoutError = (err) => String(err?.message ?? '').startsWith('Timeout après');
+const isRateLimitError = (err) => /HTTP\s+429/i.test(String(err?.message ?? ''));
 
 const scrapeWithRetry = async (config, maxAttempts, timeoutMs) => {
   let lastError;
@@ -23,7 +24,10 @@ const scrapeWithRetry = async (config, maxAttempts, timeoutMs) => {
       lastError = err;
       console.log('[run] scrape:failed attempt=', attempt, 'error=', err?.message ?? String(err));
       if (isTimeoutError(err)) break;
-      if (attempt < maxAttempts) await new Promise((resolve) => setTimeout(resolve, attempt * 1500));
+      if (attempt < maxAttempts) {
+        const delayMs = isRateLimitError(err) ? attempt * 7000 : attempt * 1500;
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
     }
   }
 
@@ -54,11 +58,15 @@ const cleanRow = (row) =>
  * @param {Array<Record<string, unknown>>} rows
  * @param {string} id
  */
-const warnEmptyFields = (rows, id) => {
+const getEmptyFieldLines = (rows, id) => {
+  const lines = [];
   BASE_FIELDS.forEach((field) => {
     const empty = rows.filter((r) => !String(r[field] ?? '').trim()).length;
-    if (empty === rows.length) console.warn('[run] ⚠️', field, 'vide à 100% | id=', id);
+    if (empty === rows.length) {
+      lines.push(`[run] ⚠️ ${field} vide à 100% | id= ${id}`);
+    }
   });
+  return lines;
 };
 
 /**
@@ -74,12 +82,15 @@ const executeScrape = async ({ id, scrapeData, meta = {} }) => {
   const rawRows = await scrapeWithRetry(scrapeData, maxAttempts, timeoutMs);
   const cleanedRows = rawRows.map(cleanRow);
 
-  warnEmptyFields(cleanedRows, id);
+  const warningLines = getEmptyFieldLines(cleanedRows, id);
+  warningLines.forEach((line) => console.warn(`[LOG 4️⃣] ${line}`));
 
-  console.log('[run] ✅', meta.nom_boutique || id, '📈 Total de lignes :', cleanedRows.length);
+  const successLine = `[run] ✅ ${meta.nom_boutique || id} 📈 Total de lignes : ${cleanedRows.length}`;
+  console.log(`[LOG 5️⃣] ${successLine}`);
 
   return {
     rows: cleanedRows,
+    runLines: [...warningLines, successLine],
     summary: {
       rawRows: rawRows.length,
       dedupedRows: cleanedRows.length,

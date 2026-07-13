@@ -26,6 +26,7 @@ const FIELD_POLLUTIONS = {
     'à l’unité',
     'CHF',
     ' kr',
+    'Sale price',
   ],
   domaine: [
     { from: 'assignols', to: 'assiggnols' },

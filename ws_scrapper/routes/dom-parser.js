@@ -1,7 +1,7 @@
 const cheerio = require('cheerio');
 const { epur, normalizeImageSrc } = require('./text-utils');
 
-const IMAGE_ATTRS = ['src', 'data-src', 'data-lazy-src', 'data-original', 'srcset'];
+const IMAGE_ATTRS = ['src', 'data-src', 'data-lazy-src', 'data-original', 'data-srcset', 'srcset'];
 
 /**
  * Extrait une valeur depuis le DOM selon un descriptor :

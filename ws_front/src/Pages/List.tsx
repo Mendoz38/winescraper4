@@ -69,10 +69,11 @@ export function ListPage() {
   const { items, loading, error, refresh } = useScrappers();
   const navigate = useNavigate();
   const apiBase = import.meta.env.VITE_API_BASE_URL.replace(/\/$/, '');
-  const [boutiqueFilter, setBoutiqueFilter] = useState(() => localStorage.getItem('list:boutique-filter') ?? '');
+  const [boutiqueFilter, setBoutiqueFilter] = useState('');
   const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
+    setBoutiqueFilter(localStorage.getItem('list:boutique-filter') ?? '');
     setIsHydrated(true);
   }, []);
 
@@ -81,9 +82,9 @@ export function ListPage() {
     : items;
 
   const goEdit = (id: string | number) => navigate({ to: '/edit', search: { id } });
-  const goView = (id: string | number) => window.open(`${apiBase}/scrap/${id}/view`, '_blank');
+  const goView = (id: string | number) => window.open(`${apiBase}/ws/scrappers/${id}/view`, '_blank');
   const goScrape = async (id: string | number) => {
-    await fetch(`${apiBase}/scrap/${id}/run`);
+    await fetch(`${apiBase}/ws/scrappers/${id}/run`);
     await refresh();
   };
 

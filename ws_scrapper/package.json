@@ -4,9 +4,10 @@
   "description": "Wine Scraper",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
+    "start": "node --env-file=.env.prod index.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "node --watch --env-file=.env index.js"
+    "dev": "node --watch --env-file=.env.dev index.js",
+    "start:prod": "node --watch --env-file=.env.prod index.js"
   },
   "author": "Mendoz",
   "license": "ISC",

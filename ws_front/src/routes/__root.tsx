@@ -1,10 +1,10 @@
-import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import Header from '../Pages/components/Header'
+import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import Header from '../Pages/components/Header';
 
-import appCss from '../css/styles.css?url'
+import appCss from '../css/styles.css?url';
 
-const queryClient = new QueryClient()
+const queryClient = new QueryClient();
 
 export const Route = createRootRoute({
   head: () => ({
@@ -28,7 +28,7 @@ export const Route = createRootRoute({
     ],
   }),
   shellComponent: RootDocument,
-})
+});
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
@@ -36,10 +36,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       <head>
         <HeadContent />
       </head>
-      <body
-        suppressHydrationWarning
-        className="font-sans antialiased [overflow-wrap:anywhere] selection:bg-[rgba(79,184,178,0.24)]"
-      >
+      <body suppressHydrationWarning className="font-sans antialiased [overflow-wrap:anywhere] selection:bg-[rgba(79,184,178,0.24)]">
         <QueryClientProvider client={queryClient}>
           <Header />
           {children}
@@ -47,5 +44,5 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         </QueryClientProvider>
       </body>
     </html>
-  )
+  );
 }
