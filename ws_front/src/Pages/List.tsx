@@ -71,6 +71,7 @@ export function ListPage() {
   const apiBase = import.meta.env.VITE_API_BASE_URL.replace(/\/$/, '');
   const [boutiqueFilter, setBoutiqueFilter] = useState('');
   const [isHydrated, setIsHydrated] = useState(false);
+  const [runningIds, setRunningIds] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     setBoutiqueFilter(localStorage.getItem('list:boutique-filter') ?? '');
@@ -84,8 +85,36 @@ export function ListPage() {
   const goEdit = (id: string | number) => navigate({ to: '/edit', search: { id } });
   const goView = (id: string | number) => window.open(`${apiBase}/ws/scrappers/${id}/view`, '_blank');
   const goScrape = async (id: string | number) => {
-    await fetch(`${apiBase}/ws/scrappers/${id}/run`);
-    await refresh();
+    const key = String(id);
+    if (runningIds[key]) {
+      console.log(`[LOG 1️⃣B] ${JSON.stringify({ layer: 'front:skip:already-running', id })}`);
+      return;
+    }
+
+    setRunningIds((prev) => ({ ...prev, [key]: true }));
+    console.log(`[LOG 1️⃣] ${JSON.stringify({ layer: 'front:start', id, url: `${apiBase}/ws/scrappers/${id}/run` })}`);
+    try {
+      const response = await fetch(`${apiBase}/ws/scrappers/${id}/run`);
+      const body = await response.json();
+      const lines = body?.result?.runLines ?? body?.runLines ?? [];
+      const dbImportLines = body?.result?.dbImportLines ?? body?.dbImportLines ?? body?.result?.dbImport?.result?.logs ?? [];
+
+      lines.forEach((line: string) => console.log(`[LOG 8️⃣] ${line}`));
+      dbImportLines.forEach((line: string) => console.log(`[LOG BDD] ${line}`));
+
+      if (!response.ok) {
+        console.error(`[LOG 8️⃣E] ${JSON.stringify({ layer: 'front:error', id, status: response.status, body })}`);
+      }
+
+      await refresh();
+      console.log(`[LOG 9️⃣] ${JSON.stringify({ layer: 'front:refresh:done', id, lines: lines.length, dbImportLines: dbImportLines.length })}`);
+    } finally {
+      setRunningIds((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+    }
   };
 
   const clickable = (id: string | number, label: React.ReactNode) => (
@@ -238,7 +267,14 @@ export function ListPage() {
       key: 'actions',
       render: (_: unknown, r: Scraper) => (
         <Space>
-          <Button size="small" icon={<ThunderboltOutlined />} onClick={() => void goScrape(r.id)} title="Scrape" />
+          <Button
+            size="small"
+            icon={<ThunderboltOutlined />}
+            onClick={() => void goScrape(r.id)}
+            title="Scrape"
+            loading={Boolean(runningIds[String(r.id)])}
+            disabled={Boolean(runningIds[String(r.id)])}
+          />
           <Button size="small" icon={<EyeOutlined />} onClick={() => goView(r.id)} title="Voir" />
         </Space>
       ),

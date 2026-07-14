@@ -28,8 +28,18 @@ module.exports = (app) => {
         rows: result.rows,
         meta,
       });
-      console.log(`[LOG 6️⃣] ${JSON.stringify({ layer: 'ws_scrapper:route:success', id, importedRows: result.rows.length })}`);
-      res.json({ status: 'success', data: meta, summary: result.summary, runLines: result.runLines || [], dbImport });
+      const dbImportLines = Array.isArray(dbImport?.result?.logs) ? dbImport.result.logs : [];
+      console.log(
+        `[LOG 6️⃣] ${JSON.stringify({ layer: 'ws_scrapper:route:success', id, importedRows: result.rows.length, dbImportLines: dbImportLines.length })}`
+      );
+      res.json({
+        status: 'success',
+        data: meta,
+        summary: result.summary,
+        runLines: result.runLines || [],
+        dbImport,
+        dbImportLines,
+      });
     } catch (err) {
       console.error(`[LOG 6️⃣E] ${JSON.stringify({ layer: 'ws_scrapper:route:error', message: err?.message ?? String(err) })}`);
       const status = /HTTP\s+429/i.test(String(err?.message ?? '')) ? 429 : 500;

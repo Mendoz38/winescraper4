@@ -115,7 +115,7 @@ const FIELD_POLLUTIONS = {
   ],
   stock: [],
   cuvee: [],
-  image: [],
+  image: [{ from: '{width}', to: '200' }],
   link: [],
 };
 

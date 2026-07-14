@@ -4,6 +4,31 @@ const { parseFields } = require('./dom-parser');
 
 const MAX_PAGES = 50;
 const DEFAULT_CONCURRENCY = Number(process.env.SCRAPE_CONCURRENCY || 3);
+const DELAY_BETWEEN_REQUESTS_MS = Number(process.env.SCRAPE_PAGE_DELAY_MS || 1500);
+const PAGE_RETRY_ATTEMPTS = Number(process.env.SCRAPE_PAGE_RETRY_ATTEMPTS || 3);
+const PAGE_RETRY_DELAY_MS = Number(process.env.SCRAPE_PAGE_RETRY_DELAY_MS || 3000);
+const RATE_LIMIT_RETRY_DELAY_MS = Number(process.env.SCRAPE_RATE_LIMIT_RETRY_DELAY_MS || 10000);
+
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+const isRateLimitError = (err) => /HTTP\s+429/i.test(String(err?.message ?? ''));
+
+// ─── Throttle global ──────────────────────────────────────────────────────────
+// Espace TOUTES les requêtes (tous workers confondus) d'au moins
+// DELAY_BETWEEN_REQUESTS_MS, quel que soit le niveau de concurrency.
+// Sans ça, concurrency=3 + délai "par worker" revient à taper 3x plus vite
+// que prévu sur le site cible → déclenche le rate-limit bien plus tôt.
+let nextAvailableAt = 0;
+const throttleGate = async () => {
+  const now = Date.now();
+  const waitMs = Math.max(0, nextAvailableAt - now);
+  nextAvailableAt = Math.max(now, nextAvailableAt) + DELAY_BETWEEN_REQUESTS_MS;
+  if (waitMs > 0) await wait(waitMs);
+};
+
+/** Repousse le throttle global d'un délai supplémentaire (ex: après un 429). */
+const pushThrottleBack = (extraDelayMs) => {
+  nextAvailableAt = Math.max(nextAvailableAt, Date.now()) + extraDelayMs;
+};
 
 // ─── Utilitaires URL ─────────────────────────────────────────────────────────
 
@@ -34,6 +59,7 @@ const expandUrls = (input) => (Array.isArray(input) ? input.flatMap(expandRanged
 
 /**
  * Applique `mapper` sur `items` avec au plus `limit` promesses simultanées.
+ * L'espacement réel des requêtes est géré par `throttleGate`, pas ici.
  */
 const mapWithConcurrency = async (items, limit, mapper) => {
   const results = new Array(items.length);
@@ -58,14 +84,63 @@ const fetchOpts = (config) => ({
   loadMore: config.load_more,
 });
 
-const fetchSinglePage = async (url, opts) => {
-  const html = await fetchHtml(url, opts);
-  return [{ $: cheerio.load(html), sourceUrl: url }];
+/**
+ * Fetch une page avec retry en cas de 429 (backoff long, dédié) ou de page
+ * vide sans erreur explicite (backoff plus court).
+ * @returns {{ $: cheerio, itemCount: number|null } | null} null si vide après tous les essais
+ */
+const fetchPageWithRetry = async (url, opts, itemSelector, attempts = PAGE_RETRY_ATTEMPTS) => {
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    await throttleGate();
+
+    let html;
+    try {
+      html = await fetchHtml(url, opts);
+    } catch (err) {
+      const rateLimited = isRateLimitError(err);
+      console.warn(
+        '[scraper] fetch:error url=',
+        url,
+        'attempt=',
+        attempt,
+        '/',
+        attempts,
+        rateLimited ? '(RATE LIMIT)' : '',
+        'error=',
+        err?.message ?? String(err)
+      );
+
+      if (attempt >= attempts) throw err;
+
+      const delayMs = rateLimited ? RATE_LIMIT_RETRY_DELAY_MS * attempt : PAGE_RETRY_DELAY_MS * attempt;
+      if (rateLimited) pushThrottleBack(delayMs); // repousse aussi les autres workers en attente
+      console.warn(`[scraper] fetch:retry url=${url} dans ${delayMs}ms`);
+      await wait(delayMs);
+      continue;
+    }
+
+    const $ = cheerio.load(html);
+    const itemCount = itemSelector ? $(itemSelector).length : null;
+    console.log('[scraper] fetch:page url=', url, 'attempt=', attempt, 'itemCount=', itemCount);
+
+    if (!itemSelector || itemCount > 0) return { $, itemCount };
+
+    console.warn('[scraper] fetch:page semble vide (possible blocage) url=', url, 'attempt=', attempt, '/', attempts);
+    if (attempt < attempts) await wait(PAGE_RETRY_DELAY_MS * attempt);
+  }
+
+  console.warn('[scraper] fetch:page reste vide après tous les essais, abandon url=', url);
+  return null;
+};
+
+const fetchSinglePage = async (url, opts, itemSelector) => {
+  const result = await fetchPageWithRetry(url, opts, itemSelector);
+  return result ? [{ $: result.$, sourceUrl: url }] : [];
 };
 
 /**
  * Suit la pagination d'une URL jusqu'à MAX_PAGES, absence de lien suivant,
- * ou absence de produits sur la page (détection de page vide).
+ * ou absence de produits sur la page (détection de page vide, avec retry).
  */
 const followPagination = async (startUrl, paginationSelector, opts, maxPages, itemSelector) => {
   const pages = [];
@@ -73,25 +148,30 @@ const followPagination = async (startUrl, paginationSelector, opts, maxPages, it
   let nextUrl = startUrl;
 
   while (nextUrl && pages.length < maxPages && !visited.has(nextUrl)) {
-    console.log('[scraper] pagination:page', pages.length + 1);
+    console.log('[scraper] pagination:page', pages.length + 1, 'url=', nextUrl);
     visited.add(nextUrl);
-    const html = await fetchHtml(nextUrl, opts);
-    const $ = cheerio.load(html);
 
-    // Stop si la page ne contient aucun produit
-    if (itemSelector && $(itemSelector).length === 0) {
-      console.log('[scraper] pagination:stop reason= no-items pages=', pages.length);
+    const result = await fetchPageWithRetry(nextUrl, opts, itemSelector);
+
+    if (!result) {
+      console.log('[scraper] pagination:stop reason= no-items-after-retry pages=', pages.length);
       break;
     }
 
+    const { $, itemCount } = result;
+    console.log('[scraper] pagination:page', pages.length + 1, 'items=', itemCount);
     pages.push({ $, sourceUrl: nextUrl });
 
     const href = $(paginationSelector).first().attr('href');
-    if (!href) break;
+    if (!href) {
+      console.log('[scraper] pagination:stop reason= no-next-href pages=', pages.length);
+      break;
+    }
 
     try {
       nextUrl = new URL(href, nextUrl).toString();
     } catch {
+      console.log('[scraper] pagination:stop reason= bad-href pages=', pages.length, 'href=', href);
       break;
     }
   }
@@ -111,14 +191,37 @@ const fetchAllPages = async (config) => {
   const itemSelector = config.data?.csv?.[0];
 
   if (urls.length > 1) {
-    console.log('[scraper] fetchAllPages urls=', urls.length, 'pagination=', Boolean(pagination));
-    const buckets = await mapWithConcurrency(urls, concurrency, (seedUrl) =>
-      pagination ? followPagination(seedUrl, pagination, opts, max_pages, itemSelector) : fetchSinglePage(seedUrl, opts)
+    console.log(
+      '[scraper] fetchAllPages urls=',
+      urls.length,
+      'pagination=',
+      Boolean(pagination),
+      'concurrency=',
+      concurrency,
+      'delayMs=',
+      DELAY_BETWEEN_REQUESTS_MS,
+      '(débit réel visé ≈ 1 req /',
+      DELAY_BETWEEN_REQUESTS_MS,
+      'ms, quel que soit concurrency)'
     );
-    return buckets.flat();
+    const buckets = await mapWithConcurrency(urls, concurrency, (seedUrl) =>
+      pagination ? followPagination(seedUrl, pagination, opts, max_pages, itemSelector) : fetchSinglePage(seedUrl, opts, itemSelector)
+    );
+    const flat = buckets.flat();
+    const emptyCount = buckets.filter((b) => Array.isArray(b) && b.length === 0).length;
+    if (emptyCount > 0) {
+      console.warn(
+        '[scraper] fetchAllPages:warning',
+        emptyCount,
+        'page(s) sur',
+        urls.length,
+        "n'ont retourné aucun contenu (voir logs 'fetch:page reste vide' ci-dessus)"
+      );
+    }
+    return flat;
   }
 
-  return pagination ? followPagination(urls[0], pagination, opts, max_pages, itemSelector) : fetchSinglePage(urls[0], opts);
+  return pagination ? followPagination(urls[0], pagination, opts, max_pages, itemSelector) : fetchSinglePage(urls[0], opts, itemSelector);
 };
 
 // ─── Extraction ───────────────────────────────────────────────────────────────
