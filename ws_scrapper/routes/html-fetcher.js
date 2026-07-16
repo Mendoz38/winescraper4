@@ -21,37 +21,33 @@ const EASY_RETRY_ATTEMPTS = Number(process.env.SCRAPE_EASY_RETRY_ATTEMPTS || 3);
 const EASY_RETRY_BASE_DELAY_MS = Number(process.env.SCRAPE_EASY_RETRY_DELAY_MS || 5000);
 
 // ─── Fetch simple (axios) ────────────────────────────────────────────────────
+// UNE SEULE tentative ici. Tout le retry/backoff est géré au niveau supérieur
+// (scraper.js), pour éviter la multiplication exponentielle des essais.
 
-const fetchEasy = async (url, { retries = EASY_RETRY_ATTEMPTS } = {}) => {
-  let lastStatus;
+const fetchEasy = async (url) => {
+  // console.log('[fetcher] easy:request url=', url);
+  const { status, data, headers } = await axios.get(url, {
+    responseType: 'text',
+    headers: AXIOS_HEADERS,
+    timeout: 30000,
+    validateStatus: () => true,
+  });
 
-  for (let attempt = 1; attempt <= retries; attempt++) {
-    console.log('[fetcher] easy:request url=', url, attempt > 1 ? `(retry ${attempt}/${retries})` : '');
+  console.log('[fetcher] easy:response url=', url, 'status=', status, 'bytes=', data?.length ?? 0);
 
-    const { status, data, headers } = await axios.get(url, {
-      responseType: 'text',
-      headers: AXIOS_HEADERS,
-      timeout: 30000,
-      validateStatus: () => true,
-    });
+  if (status === 200) return data;
 
-    lastStatus = status;
-    console.log('[fetcher] easy:response url=', url, 'status=', status, 'bytes=', data?.length ?? 0);
-
-    if (status === 200) return data;
-
-    if (status === 429 && attempt < retries) {
-      const retryAfterHeader = Number(headers?.['retry-after']);
-      const delayMs = retryAfterHeader > 0 ? retryAfterHeader * 1000 : attempt * EASY_RETRY_BASE_DELAY_MS;
-      console.warn('[fetcher] easy:429 url=', url, `→ retry dans ${delayMs}ms`);
-      await wait(delayMs);
-      continue;
-    }
-
-    throw new Error(`HTTP ${status} on ${url}`);
+  // Log le body si court : utile pour distinguer un vrai rate-limit
+  // d'un blocage anti-bot permanent (souvent un tout petit message générique).
+  if (typeof data === 'string' && data.length > 0 && data.length < 500) {
+    console.warn('[fetcher] easy:error-body url=', url, 'body=', data);
   }
 
-  throw new Error(`HTTP ${lastStatus} on ${url}`);
+  const err = new Error(`HTTP ${status} on ${url}`);
+  err.status = status;
+  const retryAfterHeader = Number(headers?.['retry-after']);
+  if (retryAfterHeader > 0) err.retryAfterMs = retryAfterHeader * 1000;
+  throw err;
 };
 
 // ─── Fetch JS-rendu (puppeteer) ──────────────────────────────────────────────
@@ -115,13 +111,8 @@ const materializeImages = (page) =>
     });
   });
 
-/**
- * Fetch JS-rendu. Lève une erreur explicite `HTTP <status> on <url>` sur
- * un statut ≥400 (au lieu de retourner silencieusement une page de blocage),
- * pour que l'appelant puisse retry avec le même mécanisme qu'en mode easy.
- */
 const fetchLazy = async (url, { loadMore } = {}) => {
-  console.log('[fetcher] lazy:request url=', url);
+  // console.log('[fetcher] lazy:request url=', url);
   const browser = await getBrowser();
   const page = await browser.newPage();
   try {
@@ -134,7 +125,9 @@ const fetchLazy = async (url, { loadMore } = {}) => {
 
     if (status && status >= 400) {
       console.warn('[fetcher] lazy:non-200 status=', status, 'url=', url, '→ page de blocage probable, abandon de ce fetch');
-      throw new Error(`HTTP ${status} on ${url}`);
+      const err = new Error(`HTTP ${status} on ${url}`);
+      err.status = status;
+      throw err;
     }
 
     await wait(1500);

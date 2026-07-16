@@ -2,37 +2,11 @@ const { scrape } = require('../routes/scraper');
 const { epur } = require('../routes/text-utils');
 const { FIELD_POLLUTIONS } = require('./field-pollutions');
 
-const DEFAULT_MAX_ATTEMPTS = 3;
 const DEFAULT_TIMEOUT_MS = 600_000;
-
 const BASE_FIELDS = ['domaine', 'cuvee', 'prix', 'stock', 'image', 'link'];
 
 const withTimeout = (promise, ms) =>
   Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(new Error(`Timeout après ${ms}ms`)), ms))]);
-
-const isTimeoutError = (err) => String(err?.message ?? '').startsWith('Timeout après');
-const isRateLimitError = (err) => /HTTP\s+429/i.test(String(err?.message ?? ''));
-
-const scrapeWithRetry = async (config, maxAttempts, timeoutMs) => {
-  let lastError;
-
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      console.log('[run] scrape:attempt', attempt, '/', maxAttempts);
-      return await withTimeout(scrape(config), timeoutMs);
-    } catch (err) {
-      lastError = err;
-      console.log('[run] scrape:failed attempt=', attempt, 'error=', err?.message ?? String(err));
-      if (isTimeoutError(err)) break;
-      if (attempt < maxAttempts) {
-        const delayMs = isRateLimitError(err) ? attempt * 7000 : attempt * 1500;
-        await new Promise((resolve) => setTimeout(resolve, delayMs));
-      }
-    }
-  }
-
-  throw lastError;
-};
 
 /**
  * Nettoie les pollutions textuelles d'une valeur selon sa colonne,
@@ -76,10 +50,9 @@ const getEmptyFieldLines = (rows, id) => {
  */
 const executeScrape = async ({ id, scrapeData, meta = {} }) => {
   const t0 = Date.now();
-  const maxAttempts = Number(scrapeData.max_attempts || DEFAULT_MAX_ATTEMPTS);
   const timeoutMs = Number(scrapeData.timeout_ms || DEFAULT_TIMEOUT_MS);
 
-  const rawRows = await scrapeWithRetry(scrapeData, maxAttempts, timeoutMs);
+  const rawRows = await withTimeout(scrape(scrapeData), timeoutMs);
   const cleanedRows = rawRows.map(cleanRow);
 
   const warningLines = getEmptyFieldLines(cleanedRows, id);

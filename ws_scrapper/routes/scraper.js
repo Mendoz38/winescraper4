@@ -4,13 +4,17 @@ const { parseFields } = require('./dom-parser');
 
 const MAX_PAGES = 50;
 const DEFAULT_CONCURRENCY = Number(process.env.SCRAPE_CONCURRENCY || 3);
-const DELAY_BETWEEN_REQUESTS_MS = Number(process.env.SCRAPE_PAGE_DELAY_MS || 1500);
+const DELAY_BETWEEN_REQUESTS_MS = Number(process.env.SCRAPE_PAGE_DELAY_MS || 2000);
 const PAGE_RETRY_ATTEMPTS = Number(process.env.SCRAPE_PAGE_RETRY_ATTEMPTS || 3);
 const PAGE_RETRY_DELAY_MS = Number(process.env.SCRAPE_PAGE_RETRY_DELAY_MS || 3000);
-const RATE_LIMIT_RETRY_DELAY_MS = Number(process.env.SCRAPE_RATE_LIMIT_RETRY_DELAY_MS || 10000);
+
+// Plafond sur le délai de retry, même si le site (via Retry-After ou notre
+// backoff) demande d'attendre plus longtemps. Évite qu'un site chatouilleux
+// bloque tout le pipeline pendant 27 minutes comme observé sur jusdelavigne.fr.
+const RATE_LIMIT_MAX_DELAY_MS = Number(process.env.SCRAPE_RATE_LIMIT_MAX_DELAY_MS || 15000);
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-const isRateLimitError = (err) => /HTTP\s+429/i.test(String(err?.message ?? ''));
+const isRateLimitError = (err) => err?.status === 429 || /HTTP\s+429/i.test(String(err?.message ?? ''));
 
 // ─── Throttle global ──────────────────────────────────────────────────────────
 // Espace TOUTES les requêtes (tous workers confondus) d'au moins
@@ -85,9 +89,7 @@ const fetchOpts = (config) => ({
 });
 
 /**
- * Fetch une page avec retry en cas de 429 (backoff long, dédié) ou de page
- * vide sans erreur explicite (backoff plus court).
- * @returns {{ $: cheerio, itemCount: number|null } | null} null si vide après tous les essais
+ * Fetch une page avec retry. SEUL et unique point de retry de tout le pipeline.
  */
 const fetchPageWithRetry = async (url, opts, itemSelector, attempts = PAGE_RETRY_ATTEMPTS) => {
   for (let attempt = 1; attempt <= attempts; attempt++) {
@@ -112,8 +114,18 @@ const fetchPageWithRetry = async (url, opts, itemSelector, attempts = PAGE_RETRY
 
       if (attempt >= attempts) throw err;
 
-      const delayMs = rateLimited ? RATE_LIMIT_RETRY_DELAY_MS * attempt : PAGE_RETRY_DELAY_MS * attempt;
-      if (rateLimited) pushThrottleBack(delayMs); // repousse aussi les autres workers en attente
+      let delayMs;
+      if (rateLimited) {
+        const suggested = err.retryAfterMs > 0 ? err.retryAfterMs : PAGE_RETRY_DELAY_MS * attempt * 3;
+        delayMs = Math.min(suggested, RATE_LIMIT_MAX_DELAY_MS);
+        if (suggested > RATE_LIMIT_MAX_DELAY_MS) {
+          console.warn(`[scraper] fetch:retry-after plafonné (${suggested}ms → ${delayMs}ms) pour éviter de bloquer la queue`);
+        }
+        pushThrottleBack(delayMs);
+      } else {
+        delayMs = PAGE_RETRY_DELAY_MS * attempt;
+      }
+
       console.warn(`[scraper] fetch:retry url=${url} dans ${delayMs}ms`);
       await wait(delayMs);
       continue;
@@ -199,10 +211,7 @@ const fetchAllPages = async (config) => {
       'concurrency=',
       concurrency,
       'delayMs=',
-      DELAY_BETWEEN_REQUESTS_MS,
-      '(débit réel visé ≈ 1 req /',
-      DELAY_BETWEEN_REQUESTS_MS,
-      'ms, quel que soit concurrency)'
+      DELAY_BETWEEN_REQUESTS_MS
     );
     const buckets = await mapWithConcurrency(urls, concurrency, (seedUrl) =>
       pagination ? followPagination(seedUrl, pagination, opts, max_pages, itemSelector) : fetchSinglePage(seedUrl, opts, itemSelector)
