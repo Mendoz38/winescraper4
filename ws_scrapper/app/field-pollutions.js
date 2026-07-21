@@ -112,6 +112,8 @@ const FIELD_POLLUTIONS = {
     { from: 'los Des B', to: 'looooos des B' },
     { from: 'los des B', to: 'looooos des B' },
     { from: 'los des b', to: 'looooos des B' },
+    { from: 'Domaine Terrasson - Oxymore', to: 'Domaine Terrasson - Oxxymore' },
+    { from: 'Fil de Soie', to: 'Fil de Sooie' },
   ],
   stock: [],
   cuvee: [],
