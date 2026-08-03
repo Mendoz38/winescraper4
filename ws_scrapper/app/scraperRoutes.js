@@ -29,6 +29,22 @@ module.exports = (app) => {
         meta,
       });
       const dbImportLines = Array.isArray(dbImport?.result?.logs) ? dbImport.result.logs : [];
+      // Si le backend a renvoyé les compteurs, les ajouter sur la même ligne "Total de lignes"
+      try {
+        const ins = dbImport?.result?.Insérées ?? dbImport?.result?.Inserees ?? dbImport?.result?.inserted ?? null;
+        const fil = dbImport?.result?.Filtrées ?? dbImport?.result?.Filtrees ?? dbImport?.result?.filtered ?? null;
+        if ((ins != null || fil != null) && Array.isArray(result.runLines)) {
+          const idx = result.runLines.findIndex((l) => typeof l === 'string' && l.includes('Total de lignes'));
+          if (idx !== -1) {
+            const parts = [];
+            if (ins != null) parts.push(`"Insérées":${ins}`);
+            if (fil != null) parts.push(`"Filtrées":${fil}`);
+            if (parts.length) result.runLines[idx] = `${result.runLines[idx]},${parts.join(',')}`;
+          }
+        }
+      } catch (e) {
+        // noop
+      }
       console.log(
         `[LOG 6️⃣] ${JSON.stringify({ layer: 'ws_scrapper:route:success', id, importedRows: result.rows.length, dbImportLines: dbImportLines.length })}`
       );

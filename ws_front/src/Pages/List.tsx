@@ -86,13 +86,14 @@ export function ListPage() {
   const goView = (id: string | number) => window.open(`${apiBase}/ws/scrappers/${id}/view`, '_blank');
   const goScrape = async (id: string | number) => {
     const key = String(id);
+    const boutiqueName = items.find((item) => String(item.id) === key)?.nom_boutique ?? null;
     if (runningIds[key]) {
       console.log(`[LOG 1️⃣B] ${JSON.stringify({ layer: 'front:skip:already-running', id })}`);
       return;
     }
 
     setRunningIds((prev) => ({ ...prev, [key]: true }));
-    console.log(`[LOG 1️⃣] ${JSON.stringify({ layer: 'front:start', id, url: `${apiBase}/ws/scrappers/${id}/run` })}`);
+    console.log(`[LOG 1️⃣] ${JSON.stringify({ Page: '-------start-------', boutique: boutiqueName })}`);
     try {
       const response = await fetch(`${apiBase}/ws/scrappers/${id}/run`);
       const body = await response.json();
@@ -107,7 +108,14 @@ export function ListPage() {
       }
 
       await refresh();
-      console.log(`[LOG 9️⃣] ${JSON.stringify({ layer: 'front:refresh:done', id, lines: lines.length, dbImportLines: dbImportLines.length })}`);
+      // console.log(
+      //   `[LOG 9️⃣] ${JSON.stringify({
+      //     Page: 'front:refresh:done',
+      //     boutique: boutiqueName,
+      //     lines: lines.length,
+      //     dbImportLines: dbImportLines.length,
+      //   })}`
+      // );
     } finally {
       setRunningIds((prev) => {
         const next = { ...prev };

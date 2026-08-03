@@ -33,7 +33,13 @@ const fetchEasy = async (url) => {
     validateStatus: () => true,
   });
 
-  console.log('[fetcher] easy:response url=', url, 'status=', status, 'bytes=', data?.length ?? 0);
+  console.log(
+    '[fetcher] easy:response url=',
+    // url, 'status=',
+    status
+    // 'bytes='
+    // data?.length ?? 0
+  );
 
   if (status === 200) return data;
 
@@ -121,7 +127,7 @@ const fetchLazy = async (url, { loadMore } = {}) => {
 
     const response = await page.goto(url, { timeout: 60000, waitUntil: 'domcontentloaded' });
     const status = response?.status() ?? null;
-    console.log('[fetcher] lazy:response url=', url, 'status=', status);
+    console.log('[fetcher] lazy:response url=', 'status=', status);
 
     if (status && status >= 400) {
       console.warn('[fetcher] lazy:non-200 status=', status, 'url=', url, '→ page de blocage probable, abandon de ce fetch');
@@ -136,7 +142,7 @@ const fetchLazy = async (url, { loadMore } = {}) => {
     await clickLoadMoreUntilGone(page, loadMore);
     await materializeImages(page);
     const html = await page.content();
-    console.log('[fetcher] lazy:content url=', url, 'bytes=', html?.length ?? 0);
+    // console.log('[fetcher] lazy:content url=', url, 'bytes=', html?.length ?? 0);
     return html;
   } finally {
     await page.close();

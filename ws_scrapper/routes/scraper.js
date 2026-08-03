@@ -160,7 +160,7 @@ const followPagination = async (startUrl, paginationSelector, opts, maxPages, it
   let nextUrl = startUrl;
 
   while (nextUrl && pages.length < maxPages && !visited.has(nextUrl)) {
-    console.log('[scraper] pagination:page', pages.length + 1, 'url=', nextUrl);
+    // console.log('[scraper] pagination:page', pages.length + 1, 'url=', nextUrl);
     visited.add(nextUrl);
 
     const result = await fetchPageWithRetry(nextUrl, opts, itemSelector);
@@ -171,7 +171,7 @@ const followPagination = async (startUrl, paginationSelector, opts, maxPages, it
     }
 
     const { $, itemCount } = result;
-    console.log('[scraper] pagination:page', pages.length + 1, 'items=', itemCount);
+    // console.log('[scraper] pagination:page', pages.length + 1, 'items=', itemCount);
     pages.push({ $, sourceUrl: nextUrl });
 
     const href = $(paginationSelector).first().attr('href');
@@ -188,7 +188,7 @@ const followPagination = async (startUrl, paginationSelector, opts, maxPages, it
     }
   }
 
-  console.log('[scraper] pagination:done url=', startUrl, 'pages=', pages.length);
+  console.log('[scraper] pagination:done url=', startUrl);
   return pages;
 };
 
@@ -273,7 +273,7 @@ const scrape = async (config) => {
   const categoryLabel =
     typeof config.data?.category === 'string' && config.data.category.trim() ? config.data.category.trim() : config.sel_category;
   const rows = extractRows(pages, config.data, categoryLabel);
-  console.log('[scraper] done pages=', pages.length, 'rows=', rows.length);
+  console.log('[scraper] done pages=', pages.length, 'Lignes=', rows.length);
   return rows;
 };
 

@@ -58,7 +58,7 @@ const executeScrape = async ({ id, scrapeData, meta = {} }) => {
   const warningLines = getEmptyFieldLines(cleanedRows, id);
   warningLines.forEach((line) => console.warn(`[LOG 4️⃣] ${line}`));
 
-  const successLine = `[run] ✅ ${meta.nom_boutique || id} 📈 Total de lignes : ${cleanedRows.length}`;
+  const successLine = `✅ ${meta.nom_boutique || id} 📈 Total de lignes : ${cleanedRows.length}`;
   console.log(`[LOG 5️⃣] ${successLine}`);
 
   return {
