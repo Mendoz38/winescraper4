@@ -1,9 +1,9 @@
 import { useNavigate, useSearch } from '@tanstack/react-router';
-import { Form, Input, Button, Card, Space, Switch, message } from 'antd';
-import { ArrowLeftOutlined } from '@ant-design/icons';
+import { Form, Input, Button, Card, Space, Switch, message, Modal } from 'antd';
+import { ArrowLeftOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { fetchScrapper, updateScrapper } from '#/api/endpoints/scrappers';
+import { fetchScrapper, updateScrapper, deleteScrapper } from '#/api/endpoints/scrappers';
 import type { Scrapper } from '#/api/endpoints/scrappers';
 import SelectorInput from './components/SelectorInput';
 
@@ -123,6 +123,28 @@ export function EditPage() {
     }
   };
 
+  const handleDelete = () => {
+    if (!scraper) return;
+
+    Modal.confirm({
+      title: `Supprimer  ${scraper.nom_boutique || `ID: ${id}`} ?`,
+      okText: 'Supprimer',
+      okType: 'danger',
+      cancelText: 'Annuler',
+      onOk: async () => {
+        try {
+          await deleteScrapper(scraper.id);
+          await queryClient.invalidateQueries({ queryKey: ['scrappers'] });
+          message.success('Scraper supprimé avec succès');
+          navigate({ to: '/' });
+        } catch (error) {
+          message.error('Erreur lors de la suppression');
+          console.error(error);
+        }
+      },
+    });
+  };
+
   return (
     <main className="page-wrap px-4 py-8">
       <section className="island-shell rounded-2xl p-6">
@@ -130,7 +152,10 @@ export function EditPage() {
           <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => navigate({ to: '/' })}>
             Retour
           </Button>
-          <h1 className="display-title m-0 text-3xl font-bold text-[var(--sea-ink)]">{String(id)}</h1>
+          <h1 className="display-title m-0 text-3xl font-bold text-[var(--sea-ink)]">{scraper?.nom_boutique || `ID: ${id}`}</h1>
+          <Button type="primary" danger icon={<DeleteOutlined />} onClick={handleDelete}>
+            Supprimer
+          </Button>
         </div>
 
         {initialLoading ? (

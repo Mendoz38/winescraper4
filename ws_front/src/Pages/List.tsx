@@ -1,7 +1,7 @@
 import { useNavigate } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { Table, Button, Space, Input } from 'antd';
-import { EyeOutlined, ThunderboltOutlined, SearchOutlined } from '@ant-design/icons';
+import { EyeOutlined, ThunderboltOutlined, SearchOutlined, PlusOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/fr';
@@ -83,6 +83,7 @@ export function ListPage() {
     : items;
 
   const goEdit = (id: string | number) => navigate({ to: '/edit', search: { id } });
+  const goAdd = () => navigate({ to: '/add' });
   const goView = (id: string | number) => window.open(`${apiBase}/ws/scrappers/${id}/view`, '_blank');
   const goScrape = async (id: string | number) => {
     const key = String(id);
@@ -296,10 +297,11 @@ export function ListPage() {
           <h1 className="display-title m-0 text-3xl font-bold text-[var(--sea-ink)]">Liste des boutiques</h1>
           <button
             type="button"
-            onClick={() => void refresh()}
+            onClick={() => void goAdd()}
             className="rounded-full border border-[var(--line)] bg-white/70 px-4 py-2 text-sm font-semibold text-[var(--sea-ink)]"
+            title="Ajouter"
           >
-            Rafraîchir
+            <PlusOutlined />
           </button>
         </div>
 

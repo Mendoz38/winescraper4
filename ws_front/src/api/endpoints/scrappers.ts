@@ -78,3 +78,32 @@ export async function updateScrapper(id: string, payload: Scrapper): Promise<Scr
   const body = (await response.json()) as ApiEnvelope<Scrapper>;
   return body.result as Scrapper;
 }
+
+// create scrapper
+export async function createScrapper(payload: Partial<Scrapper>): Promise<Scrapper> {
+  const response = await fetch(`${API_BASE}/ws/scrappers/add`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Erreur ${response.status}`);
+  }
+
+  const body = (await response.json()) as ApiEnvelope<Scrapper>;
+  return body.result as Scrapper;
+}
+
+// delete scrapper
+export async function deleteScrapper(id: string): Promise<void> {
+  const response = await fetch(`${API_BASE}/ws/scrappers/${id}`, {
+    method: 'DELETE',
+  });
+
+  if (!response.ok) {
+    throw new Error(`Erreur ${response.status}`);
+  }
+}
