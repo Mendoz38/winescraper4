@@ -225,9 +225,10 @@ export function ListPage() {
       key: 'last_run',
       width: 150,
       sorter: (a: Scraper, b: Scraper) => dayjs(a.last_run ?? '1970').valueOf() - dayjs(b.last_run ?? '1970').valueOf(),
-      render: (v: string | null) => {
+      onCell: (record: Scraper) => {
+        const v = record.last_run;
         if (!v) {
-          return { props: { style: { backgroundColor: '#000', color: '#fff' } }, children: '-' };
+          return { style: { backgroundColor: '#000', color: '#fff' } };
         }
 
         const diffSec = dayjs().diff(dayjs(v), 'second');
@@ -263,12 +264,11 @@ export function ListPage() {
           color = '#000';
         }
 
-        const text = isHydrated ? dayjs(v).fromNow() : dayjs(v).format('YYYY-MM-DD HH:mm');
-
-        return {
-          props: { style: { backgroundColor: bg, color } },
-          children: text,
-        };
+        return { style: { backgroundColor: bg, color } };
+      },
+      render: (v: string | null) => {
+        if (!v) return '-';
+        return isHydrated ? dayjs(v).fromNow() : dayjs(v).format('YYYY-MM-DD HH:mm');
       },
     },
     {
