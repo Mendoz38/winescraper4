@@ -11,8 +11,5 @@
   },
   "devDependencies": {
     "concurrently": "^9.2.1"
-  },
-  "dependencies": {
-    "csv-parse": "^7.0.2"
   }
 }
