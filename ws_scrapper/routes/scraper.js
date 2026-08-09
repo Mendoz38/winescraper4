@@ -1,6 +1,7 @@
 const cheerio = require('cheerio');
 const { fetchHtml } = require('./html-fetcher');
 const { parseFields } = require('./dom-parser');
+const { fetchCsvRows } = require('./csv-fetcher');
 
 const MAX_PAGES = 50;
 const DEFAULT_CONCURRENCY = Number(process.env.SCRAPE_CONCURRENCY || 3);
@@ -268,6 +269,14 @@ const extractRows = (pages, dataConfig, categoryLabel) => {
  */
 const scrape = async (config) => {
   if (!config?.url || !config?.data) throw new Error('config: url et data sont requis');
+
+  if (config.mode === 'csv') {
+    const urls = expandUrls(config.url);
+    const buckets = await Promise.all(urls.map((u) => fetchCsvRows(u, config.data.csvSource)));
+    const rows = buckets.flat();
+    console.log('[scraper] done (csv) urls=', urls.length, 'Lignes=', rows.length);
+    return rows;
+  }
 
   const pages = await fetchAllPages(config);
   const categoryLabel =
