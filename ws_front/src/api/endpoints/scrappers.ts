@@ -17,7 +17,16 @@ export type Scrapper = {
   load_more: string | null;
   add_url_image: string | null;
   add_url: string | null;
+  item_selector: string | null;
+  sel_domaine: string | null;
+  sel_cuvee: string | null;
+  sel_prix: string | null;
+  sel_stock: string | null;
+  sel_image: string | null;
+  sel_link: string | null;
+  sel_category: string | null;
   last_run: string | null;
+  urls: string[] | null;
   scrapeData?: {
     url: string[];
     day_cron: string | null;
@@ -26,7 +35,7 @@ export type Scrapper = {
     pagination: string | null;
     load_more: string | null;
     data: {
-      category: unknown;
+      category: string | null;
       csv: [string | null, Record<string, unknown>];
     };
   };
