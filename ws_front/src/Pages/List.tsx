@@ -29,6 +29,25 @@ interface Scraper {
 const bool = (v: boolean | null) => (v === null ? '-' : v ? 'Oui' : 'Non');
 const str = (v: string | null) => v ?? '-';
 
+const catCellStyle = (value: string | null) => {
+  const raw = (value ?? '').trim();
+  const lower = raw.toLowerCase();
+
+  if (lower.includes('ko')) {
+    return { backgroundColor: '#000', color: '#fff' };
+  }
+
+  if (lower === 'ok') {
+    return { backgroundColor: '#74d99f', color: '#000' };
+  }
+
+  if (lower === 'csv' || lower === 'ws2') {
+    return { backgroundColor: '#faad14', color: '#000' };
+  }
+
+  return undefined;
+};
+
 // Filtre colonne générique
 const colSearch = (accessor: (r: Scraper) => unknown) => ({
   filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }: any) => (
@@ -164,23 +183,15 @@ export function ListPage() {
       render: (v: number | null) => (v == null ? '-' : String(v)),
     },
     {
-      title: 'Nivo2',
-      dataIndex: 'scrapper_niveau',
-      key: 'scrapper_niveau',
-      sorter: (a: Scraper, b: Scraper) => {
-        const na = Number(a.scrapper_niveau);
-        const nb = Number(b.scrapper_niveau);
-        const va = Number.isFinite(na) ? na : -Infinity;
-        const vb = Number.isFinite(nb) ? nb : -Infinity;
-        return va - vb;
-      },
-      ...colSearch((r: Scraper) => (r.scrapper_niveau == null ? '' : String(r.scrapper_niveau))),
-      render: (v: number | null) => (v == null ? '-' : String(v)),
+      title: 'Jour',
+      dataIndex: 'day_cron',
+      key: 'day_cron',
+      sorter: (a: Scraper, b: Scraper) => Number(a.retrait_db ?? -1) - Number(b.retrait_db ?? -1),
     },
     {
-      title: 'En retrait',
-      dataIndex: 'retrait_db',
-      key: 'retrait_db',
+      title: 'Jour',
+      dataIndex: 'hour_cron',
+      key: 'hour_cron',
       sorter: (a: Scraper, b: Scraper) => Number(a.retrait_db ?? -1) - Number(b.retrait_db ?? -1),
     },
     {
@@ -203,6 +214,7 @@ export function ListPage() {
       key: 'thecat',
       sorter: (a: Scraper, b: Scraper) => (a.thecat ?? '').localeCompare(b.thecat ?? '', 'fr'),
       ...colSearch((r) => r.thecat ?? ''),
+      onCell: (record: Scraper) => ({ style: catCellStyle(record.thecat) }),
       render: str,
     },
     {
