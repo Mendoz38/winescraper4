@@ -27,6 +27,7 @@ const FIELD_POLLUTIONS = {
     'CHF',
     ' kr',
     'Sale price',
+    'TTC',
   ],
   domaine: [
     { from: 'assignols', to: 'assiggnols' },
