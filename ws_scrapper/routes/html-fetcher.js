@@ -170,4 +170,4 @@ process.on('exit', () => {
   _browser?.close().catch(() => {});
 });
 
-module.exports = { fetchHtml, closeBrowser };
+module.exports = { fetchHtml, closeBrowser, getBrowser };
