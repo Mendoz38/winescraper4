@@ -116,7 +116,6 @@ const FIELD_POLLUTIONS = {
     { from: 'Domaine Terrasson - Oxymore', to: 'Domaine Terrasson - Oxxymore' },
     { from: 'Fil de Soie', to: 'Fil de Sooie' },
     { from: 'Origine Les Quilles Libres', to: 'Les Quuuuuilles Libres' },
-    { from: 'Ecole Buissonnière ', to: 'Ecole Buissssssssonnière ' },
   ],
   stock: [
     { from: 'Rupture de stock', to: 'Rupture' },
