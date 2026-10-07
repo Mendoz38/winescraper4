@@ -21,7 +21,8 @@ const cleanRow = (row) =>
       const tokens = FIELD_POLLUTIONS[k] ?? [];
       const cleaned = tokens.reduce(
         (s, token) => (typeof token === 'string' ? s.replaceAll(token, '') : s.replaceAll(token.from, token.to)),
-        v
+        // Espaces normalisés sans trim, pour que les règles avec espaces en bord de chaîne matchent toujours
+        v.replace(/[\r\n\t]+/g, ' ').replace(/ {2,}/g, ' ')
       );
       return [k, epur(cleaned) ?? ''];
     })
