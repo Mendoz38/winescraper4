@@ -27,7 +27,7 @@ const config = defineConfig(({ mode }) => {
           }
         : {}),
     },
-    plugins: [tsconfigPaths({ projects: ['./tsconfig.json'] }), tailwindcss(), tanstackStart(), viteReact()],
+    plugins: [tsconfigPaths({ projects: ['./tsconfig.json'] }), tailwindcss(), tanstackStart({ spa: { enabled: true } }), viteReact()],
   };
 });
 

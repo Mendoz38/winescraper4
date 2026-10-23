@@ -1,0 +1,7 @@
+node_modules
+dist
+.tanstack
+.vscode
+.env
+.env.dev
+.env.production
