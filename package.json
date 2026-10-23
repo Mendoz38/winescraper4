@@ -7,9 +7,10 @@
     "dev": "concurrently -n back,front,scrapper -c blue,green,magenta  \"pnpm --dir ws_front dev\" \"pnpm --dir ws_scrapper dev\"",
     "dev:back": "pnpm --dir ws_back dev",
     "dev:front": "pnpm --dir ws_front dev",
-    "dev:scrapper": "pnpm --dir ws_scrapper dev"
+    "dev:scrapper": "pnpm --dir ws_scrapper dev",
+    "test": "pnpm --dir ws_front test && pnpm --dir ws_scrapper test:run"
   },
   "devDependencies": {
-    "concurrently": "^9.2.1"
+    "concurrently": "^10.0.6"
   }
 }

@@ -1,0 +1,12 @@
+.git
+.env
+data
+**/node_modules
+**/dist
+**/.tanstack
+**/.vscode
+ws_front/.env
+ws_front/.env.dev
+ws_front/.env.production
+ws_scrapper/*
+!ws_scrapper/package.json

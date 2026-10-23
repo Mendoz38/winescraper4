@@ -1,5 +1,4 @@
 import { defineConfig, loadEnv } from 'vite';
-import tsconfigPaths from 'vite-tsconfig-paths';
 
 import { tanstackStart } from '@tanstack/react-start/plugin/vite';
 
@@ -27,7 +26,16 @@ const config = defineConfig(({ mode }) => {
           }
         : {}),
     },
-    plugins: [tsconfigPaths({ projects: ['./tsconfig.json'] }), tailwindcss(), tanstackStart({ spa: { enabled: true } }), viteReact()],
+    resolve: {
+      tsconfigPaths: true,
+    },
+    test: {
+      environment: 'jsdom',
+      setupFiles: ['./src/tests/setup.ts'],
+      clearMocks: true,
+      restoreMocks: true,
+    },
+    plugins: [tailwindcss(),tanstackStart({ spa: { enabled: true } }), viteReact()],
   };
 });
 

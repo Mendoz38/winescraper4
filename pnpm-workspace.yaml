@@ -1,3 +1,7 @@
 packages:
   - 'ws_front'
   - 'ws_scrapper'
+
+onlyBuiltDependencies:
+  - esbuild
+  - lightningcss

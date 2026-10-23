@@ -1,0 +1,28 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "dependencyDashboard": true,
+  "commitMessagePrefix": "chore(renovate):",
+  "minimumReleaseAge": "3 days",
+  "internalChecksFilter": "strict",
+  "automergeStrategy": "squash",
+  "enabledManagers": ["npm", "dockerfile"],
+  "packageRules": [
+    {
+      "description": "Seuls les correctifs sont fusionnés automatiquement ; mineures et majeures restent manuelles",
+      "matchUpdateTypes": ["patch"],
+      "automerge": true
+    },
+    {
+      "description": "Types Node alignés sur l'image node:22 des conteneurs : relever en même temps que l'image",
+      "matchPackageNames": ["@types/node"],
+      "allowedVersions": "<23"
+    },
+    {
+      "description": "TypeScript 7 non supporté par typescript-eslint (lint de ws_front) : à réactiver quand ce sera le cas",
+      "matchPackageNames": ["typescript"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false
+    }
+  ]
+}
